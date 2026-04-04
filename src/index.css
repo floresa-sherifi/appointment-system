@@ -1,101 +1,95 @@
-/* Body dhe container */
 body {
   font-family: 'Segoe UI', sans-serif;
-  background: #f3f3ff;
   margin: 0;
+  background: #f3f3ff;
+}
+
+.dashboard {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.dashboard-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  height: 100vh;
+  margin-bottom: 30px;
 }
 
-/* Container i qendruar për form */
-.form-wrapper {
-  background: white;
-  padding: 40px 30px;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-}
-
-/* Titulli i formës */
-.form-wrapper h2 {
-  margin-bottom: 20px;
-  color: #4a3cff;
-  font-size: 28px;
-}
-
-/* Label për input */
-label {
-  display: block;
-  margin-top: 12px;
-  margin-bottom: 6px;
-  font-weight: bold;
-  color: #333;
-  text-align: left;
-}
-
-/* Input dhe select */
-input, select {
-  width: 100%;
-  padding: 12px;
-  margin: 8px 0;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-  box-sizing: border-box;
-}
-
-input:focus, select:focus {
-  border-color: #4a3cff;
-  outline: none;
-  box-shadow: 0 0 5px rgba(74, 60, 255, 0.5);
-}
-
-/* Buton */
-button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 15px;
-  border-radius: 10px;
+.logout-btn {
+  background: #ff5e5e;
+  color: white;
   border: none;
-  background-color: #4a3cff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.logout-btn:hover {
+  background: #ff3b3b;
+}
+
+.form-card {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  margin-bottom: 40px;
+}
+
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button[type="submit"] {
+  background: #4a3cff;
   color: white;
   font-weight: bold;
-  font-size: 16px;
   cursor: pointer;
   transition: 0.3s;
 }
 
-button:hover {
-  background-color: #6c5bff;
+button[type="submit"]:hover {
+  background: #6c5bff;
 }
 
-/* Mesazhet e error dhe success */
-.error {
-  color: red;
-  margin-top: 8px;
-  text-align: center;
+.error { color: red; margin-top: 8px; }
+.success { color: green; margin-top: 8px; }
+
+.appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.success {
-  color: green;
-  margin-top: 8px;
-  text-align: center;
+.appointment-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f0f0ff;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  font-weight: bold;
 }
 
-/* Për responsive */
-@media (max-width: 480px) {
-  .form-wrapper {
-    padding: 30px 20px;
-  }
-  .form-wrapper h2 {
-    font-size: 24px;
-  }
-  input, select, button {
-    font-size: 14px;
-    padding: 10px;
-  }
+.delete-btn {
+  background: #ff5e5e;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.delete-btn:hover {
+  background: #ff3b3b;
 }
