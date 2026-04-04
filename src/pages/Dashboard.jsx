@@ -50,11 +50,13 @@ export default function Dashboard() {
     else setDoctorsList(data);
   };
 
+  // Logout
   const logout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
   };
 
+  // Kontrollo orët e lira
   const checkAvailableTimes = async (selectedDoctor, selectedDate) => {
     const allTimes = [
       "09:00","09:30","10:00","10:30","11:00","11:30",
@@ -77,6 +79,7 @@ export default function Dashboard() {
     setAvailableTimes(allTimes.filter(t => !bookedTimes.includes(t)));
   };
 
+  // Shto ose ndrysho termin
   const addOrEditAppointment = async (e) => {
     e.preventDefault();
     setError(""); setSuccess("");
@@ -92,7 +95,6 @@ export default function Dashboard() {
     }
 
     if (editId) {
-      // Edit appointment
       const { error } = await supabase
         .from("appointments")
         .update({ date, time, doctor })
@@ -105,7 +107,6 @@ export default function Dashboard() {
         setEditId(null);
       }
     } else {
-      // Shto appointment
       const { error } = await supabase
         .from("appointments")
         .insert([{ user_id: user.id, date, time, doctor }]);
@@ -118,6 +119,7 @@ export default function Dashboard() {
     fetchAppointments();
   };
 
+  // Fshi termin
   const deleteAppointment = async (id) => {
     if (!window.confirm("A je i sigurt që dëshiron të fshish këtë termin?")) return;
 
@@ -134,6 +136,7 @@ export default function Dashboard() {
     }
   };
 
+  // Fillon editim
   const startEdit = (a) => {
     setEditId(a.id);
     setDate(a.date);
@@ -185,8 +188,8 @@ export default function Dashboard() {
             required
           >
             <option value="">Zgjidh Orën</option>
-            {availableTimes.length > 0 
-              ? availableTimes.map(t => <option key={t}>{t}</option>)
+            {availableTimes.length > 0
+              ? availableTimes.map(t => <option key={t} value={t}>{t}</option>)
               : date && doctor
                 ? <option key="none" disabled>Nuk ka orë të lira</option>
                 : null}
@@ -205,8 +208,8 @@ export default function Dashboard() {
           <div key={a.id} className="appointment-card">
             <strong>{a.doctor}</strong> <br />
             {a.date} në {a.time} <br />
-            <button onClick={() => startEdit(a)}>Ndrysho</button>
-            <button onClick={() => deleteAppointment(a.id)}>Fshi</button>
+            <button className="edit-btn" onClick={() => startEdit(a)}>Ndrysho</button>
+            <button className="delete-btn" onClick={() => deleteAppointment(a.id)}>Fshi</button>
           </div>
         ))}
       </div>
