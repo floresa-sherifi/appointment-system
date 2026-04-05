@@ -2,22 +2,22 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
 export default function Dashboard() {
+  const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [availableTimes, setAvailableTimes] = useState([]);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [doctor, setDoctor] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [doctorsList, setDoctorsList] = useState([]);
-  const [availableTimes, setAvailableTimes] = useState([]);
-  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const getUser = async () => {
+    const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
     };
-    getUser();
+    fetchUser();
   }, []);
 
   useEffect(() => {
@@ -32,7 +32,8 @@ export default function Dashboard() {
       .from("appointments")
       .select("*")
       .eq("user_id", user.id)
-      .order("date", { ascending: true });
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
     setAppointments(data || []);
   };
 
@@ -61,78 +62,87 @@ export default function Dashboard() {
   const addAppointment = async (e) => {
     e.preventDefault();
     setError(""); setSuccess("");
-    if (!date || !time || !doctor) { setError("Plotësoni të gjitha fushat!"); return; }
-    if (!availableTimes.includes(time)) { setError("Kjo orë nuk është e lirë!"); return; }
-    const { error } = await supabase.from("appointments").insert([{ user_id: user.id, date, time, doctor }]);
+    if (!date || !time || !doctor) return setError("Plotëso të gjitha fushat!");
+    if (!availableTimes.includes(time)) return setError("Kjo orë nuk është e lirë!");
+
+    const { error } = await supabase.from("appointments").insert([
+      { user_id: user.id, date, time, doctor }
+    ]);
     if (error) setError(error.message);
     else {
-      setSuccess("Termini u rezervua me sukses ✅");
+      setSuccess("Termini u rezervua ✅");
       setDate(""); setTime(""); setDoctor(""); setAvailableTimes([]);
       fetchAppointments();
     }
   };
 
-  const handleLogout = async () => {
+  const deleteAppointment = async (id) => {
+    if (!window.confirm("A jeni i sigurt?")) return;
+    const { error } = await supabase.from("appointments").delete().eq("id", id).eq("user_id", user.id);
+    if (error) setError(error.message);
+    else fetchAppointments();
+  };
+
+  const logout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
 
-  if (!user) return <p>Loading...</p>;
+  if (!user) return <p>Duke u ngarkuar...</p>;
 
   return (
     <div className="dashboard-wrapper">
+
       {/* SIDEBAR */}
       <div className="sidebar">
         <div className="profile">
-          <h3>{user.user_metadata?.name || "Përdorues"}</h3>
-          <p>Email: {user.email}</p>
-          <button onClick={handleLogout}>Logout</button>
+          <div className="avatar">{user.user_metadata?.name?.charAt(0) || user.email.charAt(0)}</div>
+          <h3>{user.user_metadata?.name || user.email}</h3>
         </div>
         <div className="menu">
-          <p><strong>Menu</strong></p>
           <ul>
-            <li>Terminet e rezervuara</li>
-            <li>Mjekët</li>
+            <li>Terminet e tua</li>
+            <li>Doktorët</li>
             <li>Profil</li>
           </ul>
         </div>
+        <button onClick={logout}>Logout</button>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN DASHBOARD */}
       <div className="dashboard-main">
-        <h2>👋 Mirësevini, {user.user_metadata?.name || "Përdorues"}</h2>
+        <h2>Rezervo Termin</h2>
+        <form onSubmit={addAppointment} className="form-card">
+          <label>Data</label>
+          <input type="date" value={date} onChange={(e)=>{setDate(e.target.value); checkAvailableTimes(doctor, e.target.value)}}/>
 
-        <div className="form-card">
-          <h3>Rezervo Termin</h3>
-          <form onSubmit={addAppointment}>
-            <label>Data</label>
-            <input type="date" value={date} onChange={e => { setDate(e.target.value); checkAvailableTimes(doctor, e.target.value); }} />
-            <label>Mjeku</label>
-            <select value={doctor} onChange={e => { setDoctor(e.target.value); checkAvailableTimes(e.target.value, date); }}>
-              <option value="">Zgjidh Mjekun</option>
-              {doctorsList.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-            </select>
-            <label>Ora</label>
-            <select value={time} onChange={e => setTime(e.target.value)}>
-              <option value="">Zgjidh Orën</option>
-              {availableTimes.length > 0 ? availableTimes.map(t => <option key={t}>{t}</option>)
-                : date && doctor && <option disabled>Nuk ka orë të lira ❌</option>}
-            </select>
-            <button type="submit">Rezervo Termin</button>
-            {error && <p className="error">{error}</p>}
-            {success && <p className="success">{success}</p>}
-          </form>
-        </div>
+          <label>Mjeku</label>
+          <select value={doctor} onChange={(e)=>{setDoctor(e.target.value); checkAvailableTimes(e.target.value, date)}}>
+            <option value="">Zgjidh Mjekun</option>
+            {doctorsList.map(d=><option key={d.id} value={d.name}>{d.name}</option>)}
+          </select>
+
+          <label>Ora</label>
+          <select value={time} onChange={(e)=>setTime(e.target.value)}>
+            <option value="">Zgjidh Orën</option>
+            {availableTimes.length>0 ? availableTimes.map(t=><option key={t}>{t}</option>) : date && doctor && <option disabled>Nuk ka orë të lira</option>}
+          </select>
+
+          <button type="submit">Rezervo</button>
+          {error && <p className="error">{error}</p>}
+          {success && <p className="success">{success}</p>}
+        </form>
 
         <h3>Terminet e tua</h3>
-        {appointments.length === 0 && <p>Nuk keni termine.</p>}
         <div className="appointments-list">
-          {appointments.map(a => (
-            <div key={a.id} className="appointment-card">
-              <strong>{a.doctor}</strong><br />
-              {a.date} në {a.time}
-            </div>
-          ))}
+          {appointments.length===0 ? <p>Nuk keni termine.</p> :
+            appointments.map(a => (
+              <div key={a.id} className="appointment-card">
+                <span>{a.date} në {a.time} - {a.doctor}</span>
+                <button className="delete-btn" onClick={()=>deleteAppointment(a.id)}>Fshi</button>
+              </div>
+            ))
+          }
         </div>
       </div>
     </div>
