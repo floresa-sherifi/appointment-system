@@ -50,13 +50,11 @@ export default function Dashboard() {
     else setDoctorsList(data);
   };
 
-  // Logout
   const logout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
   };
 
-  // Kontrollo orët e lira
   const checkAvailableTimes = async (selectedDoctor, selectedDate) => {
     const allTimes = [
       "09:00","09:30","10:00","10:30","11:00","11:30",
@@ -79,7 +77,6 @@ export default function Dashboard() {
     setAvailableTimes(allTimes.filter(t => !bookedTimes.includes(t)));
   };
 
-  // Shto ose ndrysho termin
   const addOrEditAppointment = async (e) => {
     e.preventDefault();
     setError(""); setSuccess("");
@@ -119,7 +116,6 @@ export default function Dashboard() {
     fetchAppointments();
   };
 
-  // Fshi termin
   const deleteAppointment = async (id) => {
     if (!window.confirm("A je i sigurt që dëshiron të fshish këtë termin?")) return;
 
@@ -136,7 +132,6 @@ export default function Dashboard() {
     }
   };
 
-  // Fillon editim
   const startEdit = (a) => {
     setEditId(a.id);
     setDate(a.date);
@@ -148,70 +143,75 @@ export default function Dashboard() {
   if (!user) return <p>Duke u ngarkuar...</p>;
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h2>Mirësevini, {user.user_metadata?.name || user.email}</h2>
-        <button className="logout-btn" onClick={logout}>Logout</button>
+    <div className="dashboard-wrapper">
+      {/* Sidebar */}
+      <div className="sidebar">
+        <div className="profile">
+          <h3>{user.user_metadata?.name || user.email}</h3>
+          <p>Përdorues</p>
+          <button className="logout-btn" onClick={logout}>Logout</button>
+        </div>
+        <div className="menu">
+          <p><strong>Menu</strong></p>
+          <ul>
+            <li>Terminet e rezervuara</li>
+            <li>Mjekët</li>
+            <li>Profil</li>
+          </ul>
+        </div>
       </div>
 
-      <div className="form-card">
-        <h3>{editId ? "Ndrysho Termin" : "Shto Termin"}</h3>
-        <form onSubmit={addOrEditAppointment}>
-          <label>Data</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => {
-              setDate(e.target.value);
-              checkAvailableTimes(doctor, e.target.value);
-            }}
-            required
-          />
+      {/* Pjesa kryesore */}
+      <div className="dashboard-main">
+        <div className="form-card">
+          <h3>{editId ? "Ndrysho Termin" : "Shto Termin"}</h3>
+          <form onSubmit={addOrEditAppointment}>
+            <label>Data</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => { setDate(e.target.value); checkAvailableTimes(doctor, e.target.value); }}
+              required
+            />
 
-          <label>Mjeku</label>
-          <select
-            value={doctor}
-            onChange={(e) => {
-              setDoctor(e.target.value);
-              checkAvailableTimes(e.target.value, date);
-            }}
-            required
-          >
-            <option value="">Zgjidh Mjekun</option>
-            {doctorsList.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-          </select>
+            <label>Mjeku</label>
+            <select
+              value={doctor}
+              onChange={(e) => { setDoctor(e.target.value); checkAvailableTimes(e.target.value, date); }}
+              required
+            >
+              <option value="">Zgjidh Mjekun</option>
+              {doctorsList.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+            </select>
 
-          <label>Ora</label>
-          <select
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            required
-          >
-            <option value="">Zgjidh Orën</option>
-            {availableTimes.length > 0
-              ? availableTimes.map(t => <option key={t} value={t}>{t}</option>)
-              : date && doctor
-                ? <option key="none" disabled>Nuk ka orë të lira</option>
-                : null}
-          </select>
+            <label>Ora</label>
+            <select value={time} onChange={(e) => setTime(e.target.value)} required>
+              <option value="">Zgjidh Orën</option>
+              {availableTimes.length > 0 
+                ? availableTimes.map(t => <option key={t}>{t}</option>)
+                : date && doctor
+                  ? <option key="none" disabled>Nuk ka orë të lira</option>
+                  : null}
+            </select>
 
-          <button type="submit">{editId ? "Ndrysho Termin" : "Rezervo Termin"}</button>
-          {error && <p className="error">{error}</p>}
-          {success && <p className="success">{success}</p>}
-        </form>
-      </div>
+            <button type="submit">{editId ? "Ndrysho Termin" : "Rezervo Termin"}</button>
+            {error && <p className="error">{error}</p>}
+            {success && <p className="success">{success}</p>}
+          </form>
+        </div>
 
-      <h3>Terminet e tua</h3>
-      <div className="appointments-list">
-        {appointments.length === 0 && <p>Nuk keni termine të regjistruara.</p>}
-        {appointments.map(a => (
-          <div key={a.id} className="appointment-card">
-            <strong>{a.doctor}</strong> <br />
-            {a.date} në {a.time} <br />
-            <button className="edit-btn" onClick={() => startEdit(a)}>Ndrysho</button>
-            <button className="delete-btn" onClick={() => deleteAppointment(a.id)}>Fshi</button>
-          </div>
-        ))}
+        <h3>Terminet e tua</h3>
+        <div className="appointments-list">
+          {appointments.length === 0 && <p>Nuk keni termine të regjistruara.</p>}
+          {appointments.map(a => (
+            <div key={a.id} className="appointment-card">
+              <strong>{a.doctor}</strong> <br />
+              {a.date} në {a.time} <br />
+              <button onClick={() => startEdit(a)}>Ndrysho</button>
+              <button onClick={() => deleteAppointment(a.id)}>Fshi</button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
