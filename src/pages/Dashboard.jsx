@@ -49,29 +49,35 @@ export default function Dashboard() {
 
   // ORËT E LIRA
   const checkAvailableTimes = async (doc, dt) => {
-  const allTimes = [
-    "09:00","09:30","10:00","10:30",
-    "11:00","11:30","12:00","12:30",
-    "13:00","13:30","14:00","14:30",
-    "15:00","15:30","16:00","16:30","17:00"
-  ];
+    const allTimes = [
+      "09:00","09:30","10:00","10:30",
+      "11:00","11:30","12:00","12:30",
+      "13:00","13:30","14:00","14:30",
+      "15:00","15:30","16:00","16:30","17:00"
+    ];
 
-  if (!doc || !dt) {
-    setAvailableTimes(allTimes); // 🔥 gjithmonë shfaq orët
-    return;
-  }
+    if (!doc || !dt) {
+      setAvailableTimes(allTimes); // 🔥 shfaq gjithmonë diçka
+      return;
+    }
 
-  const { data } = await supabase
-    .from("appointments")
-    .select("time")
-    .eq("doctor", doc)
-    .eq("date", dt);
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("time")
+      .eq("doctor", doc)
+      .eq("date", dt);
 
-  const booked = data?.map((a) => a.time) || [];
-  const free = allTimes.filter((t) => !booked.includes(t));
+    if (error) {
+      setAvailableTimes(allTimes);
+      return;
+    }
 
-  setAvailableTimes(free);
-};
+    const booked = data.map(a => a.time);
+    const free = allTimes.filter(t => !booked.includes(t));
+
+    setAvailableTimes(free.length > 0 ? free : allTimes);
+  };
+
   // ADD
   const addAppointment = async (e) => {
     e.preventDefault();
