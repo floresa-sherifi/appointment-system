@@ -49,35 +49,29 @@ export default function Dashboard() {
 
   // ORËT E LIRA
   const checkAvailableTimes = async (doc, dt) => {
-    const allTimes = [
-      "09:00","09:30","10:00","10:30",
-      "11:00","11:30","12:00","12:30",
-      "13:00","13:30","14:00","14:30",
-      "15:00","15:30","16:00","16:30","17:00"
-    ];
+  const allTimes = [
+    "09:00","09:30","10:00","10:30",
+    "11:00","11:30","12:00","12:30",
+    "13:00","13:30","14:00","14:30",
+    "15:00","15:30","16:00","16:30","17:00"
+  ];
 
-    if (!doc || !dt) {
-      setAvailableTimes(allTimes); // 🔥 shfaq gjithmonë diçka
-      return;
-    }
+  if (!doc || !dt) {
+    setAvailableTimes(allTimes); // 🔥 gjithmonë shfaq orët
+    return;
+  }
 
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("time")
-      .eq("doctor", doc)
-      .eq("date", dt);
+  const { data } = await supabase
+    .from("appointments")
+    .select("time")
+    .eq("doctor", doc)
+    .eq("date", dt);
 
-    if (error) {
-      setAvailableTimes(allTimes);
-      return;
-    }
+  const booked = data?.map((a) => a.time) || [];
+  const free = allTimes.filter((t) => !booked.includes(t));
 
-    const booked = data.map(a => a.time);
-    const free = allTimes.filter(t => !booked.includes(t));
-
-    setAvailableTimes(free.length > 0 ? free : allTimes);
-  };
-
+  setAvailableTimes(free);
+};
   // ADD
   const addAppointment = async (e) => {
     e.preventDefault();
@@ -201,17 +195,27 @@ export default function Dashboard() {
             ))}
           </select>
 
-          <label>Ora</label>
-          <select
-            value={time}
-            onChange={(e)=>setTime(e.target.value)}
-          >
-            <option value="">Zgjidh Orën</option>
-            {availableTimes.map(t => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
+        <label>Ora</label>
+<select
+  value={time}
+  onChange={(e) => setTime(e.target.value)}
+>
+  <option value="">Zgjidh Orën</option>
 
+  {availableTimes.length > 0 ? (
+    availableTimes.map((t) => (
+      <option key={t} value={t}>
+        {t}
+      </option>
+    ))
+  ) : (
+    date && doctor && (
+      <option disabled>
+        Nuk ka orë të lira
+      </option>
+    )
+  )}
+</select>
           <button type="submit">Rezervo</button>
 
           {error && <p className="error">{error}</p>}
