@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [chat, setChat] = useState([]);
   const [message, setMessage] = useState("");
 
-  // USER
+  // 🔐 USER
   useEffect(() => {
     const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -23,6 +23,7 @@ export default function Dashboard() {
     fetchUser();
   }, []);
 
+  // 📊 FETCH DATA
   useEffect(() => {
     if (user) {
       fetchAppointments();
@@ -30,7 +31,14 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // FETCH
+  // 🔥 AUTOMATIC UPDATE ORËT
+  useEffect(() => {
+    if (doctor && date) {
+      checkAvailableTimes(doctor, date);
+    }
+  }, [doctor, date]);
+
+  // FETCH APPOINTMENTS
   const fetchAppointments = async () => {
     const { data } = await supabase
       .from("appointments")
@@ -42,12 +50,13 @@ export default function Dashboard() {
     setAppointments(data || []);
   };
 
+  // FETCH DOCTORS
   const fetchDoctors = async () => {
     const { data } = await supabase.from("doctors").select("*");
     setDoctorsList(data || []);
   };
 
-  // ORËT E LIRA
+  // 🕐 ORËT E LIRA (FIX FINAL)
   const checkAvailableTimes = async (doc, dt) => {
     const allTimes = [
       "09:00","09:30","10:00","10:30",
@@ -56,8 +65,9 @@ export default function Dashboard() {
       "15:00","15:30","16:00","16:30","17:00"
     ];
 
+    // gjithmonë shfaq orët në fillim
     if (!doc || !dt) {
-      setAvailableTimes(allTimes); // 🔥 shfaq gjithmonë diçka
+      setAvailableTimes(allTimes);
       return;
     }
 
@@ -68,17 +78,18 @@ export default function Dashboard() {
       .eq("date", dt);
 
     if (error) {
+      console.log(error);
       setAvailableTimes(allTimes);
       return;
     }
 
-    const booked = data.map(a => a.time);
+    const booked = data?.map(a => a.time) || [];
     const free = allTimes.filter(t => !booked.includes(t));
 
-    setAvailableTimes(free.length > 0 ? free : allTimes);
+    setAvailableTimes(free);
   };
 
-  // ADD
+  // ➕ ADD
   const addAppointment = async (e) => {
     e.preventDefault();
     setError("");
@@ -104,7 +115,7 @@ export default function Dashboard() {
     }
   };
 
-  // DELETE
+  // 🗑 DELETE
   const deleteAppointment = async (id) => {
     if (!window.confirm("A jeni i sigurt?")) return;
 
@@ -117,13 +128,13 @@ export default function Dashboard() {
     fetchAppointments();
   };
 
-  // LOGOUT
+  // 🚪 LOGOUT
   const logout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
 
-  // AI CHAT
+  // 🤖 AI CHAT
   const handleSendMessage = () => {
     if (!message) return;
 
@@ -181,19 +192,13 @@ export default function Dashboard() {
           <input
             type="date"
             value={date}
-            onChange={(e)=>{
-              setDate(e.target.value);
-              checkAvailableTimes(doctor, e.target.value);
-            }}
+            onChange={(e) => setDate(e.target.value)}
           />
 
           <label>Mjeku</label>
           <select
             value={doctor}
-            onChange={(e)=>{
-              setDoctor(e.target.value);
-              checkAvailableTimes(e.target.value, date);
-            }}
+            onChange={(e) => setDoctor(e.target.value)}
           >
             <option value="">Zgjidh Mjekun</option>
             {doctorsList.map(d => (
@@ -201,27 +206,22 @@ export default function Dashboard() {
             ))}
           </select>
 
-        <label>Ora</label>
-<select
-  value={time}
-  onChange={(e) => setTime(e.target.value)}
->
-  <option value="">Zgjidh Orën</option>
+          <label>Ora</label>
+          <select
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+          >
+            <option value="">Zgjidh Orën</option>
 
-  {availableTimes.length > 0 ? (
-    availableTimes.map((t) => (
-      <option key={t} value={t}>
-        {t}
-      </option>
-    ))
-  ) : (
-    date && doctor && (
-      <option disabled>
-        Nuk ka orë të lira
-      </option>
-    )
-  )}
-</select>
+            {availableTimes.length > 0 ? (
+              availableTimes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))
+            ) : (
+              <option disabled>Nuk ka orë të lira</option>
+            )}
+          </select>
+
           <button type="submit">Rezervo</button>
 
           {error && <p className="error">{error}</p>}
@@ -238,7 +238,7 @@ export default function Dashboard() {
                 <span>{a.date} në {a.time} - {a.doctor}</span>
                 <button
                   className="delete-btn"
-                  onClick={()=>deleteAppointment(a.id)}
+                  onClick={() => deleteAppointment(a.id)}
                 >
                   Fshi
                 </button>
