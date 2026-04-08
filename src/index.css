@@ -45,4 +45,18 @@ button:hover {background:#6c5bff;}
 .appointment-card{background:#f9f9ff;border-radius:12px;padding:12px;box-shadow:0 2px 5px rgba(0,0,0,0.1);display:flex;justify-content:space-between;align-items:center;font-weight:bold;}
 .delete-btn{background:#ff4a4a;color:white;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;}
 .delete-btn:hover{background:#ff0000;}
+
+button:disabled {
+  background: gray;
+  cursor: not-allowed;
+}
+
+.chat-box {
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
 @media(max-width:768px){.dashboard-wrapper{flex-direction:column}.sidebar{width:100%;flex-direction:row;justify-content:space-around}.dashboard-main{padding:20px}}
