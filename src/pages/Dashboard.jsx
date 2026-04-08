@@ -14,6 +14,10 @@ export default function Dashboard() {
   const [chat, setChat] = useState([]);
   const [message, setMessage] = useState("");
 
+  // ✅ EXTRA STATES
+  const [loading, setLoading] = useState(false);
+  const [offline, setOffline] = useState(!navigator.onLine);
+
   // 🔐 USER
   useEffect(() => {
     const fetchUser = async () => {
@@ -23,7 +27,21 @@ export default function Dashboard() {
     fetchUser();
   }, []);
 
-  // 📊 FETCH DATA
+  // 🌐 OFFLINE DETECTION
+  useEffect(() => {
+    const goOffline = () => setOffline(true);
+    const goOnline = () => setOffline(false);
+
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
+
+  // 📊 FETCH
   useEffect(() => {
     if (user) {
       fetchAppointments();
@@ -31,32 +49,37 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // 🔥 AUTOMATIC UPDATE ORËT
+  // 🔥 AUTO UPDATE ORËT
   useEffect(() => {
     if (doctor && date) {
       checkAvailableTimes(doctor, date);
     }
   }, [doctor, date]);
 
-  // FETCH APPOINTMENTS
+  // 📊 FETCH APPOINTMENTS (ME LOADING)
   const fetchAppointments = async () => {
-    const { data } = await supabase
+    setLoading(true);
+
+    const { data, error } = await supabase
       .from("appointments")
       .select("*")
       .eq("user_id", user.id)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
-    setAppointments(data || []);
+    if (error) setError(error.message);
+    else setAppointments(data || []);
+
+    setLoading(false);
   };
 
-  // FETCH DOCTORS
+  // 📊 FETCH DOCTORS
   const fetchDoctors = async () => {
     const { data } = await supabase.from("doctors").select("*");
     setDoctorsList(data || []);
   };
 
-  // 🕐 ORËT E LIRA (FIX FINAL)
+  // 🕐 ORËT
   const checkAvailableTimes = async (doc, dt) => {
     const allTimes = [
       "09:00","09:30","10:00","10:30",
@@ -65,7 +88,6 @@ export default function Dashboard() {
       "15:00","15:30","16:00","16:30","17:00"
     ];
 
-    // gjithmonë shfaq orët në fillim
     if (!doc || !dt) {
       setAvailableTimes(allTimes);
       return;
@@ -78,7 +100,6 @@ export default function Dashboard() {
       .eq("date", dt);
 
     if (error) {
-      console.log(error);
       setAvailableTimes(allTimes);
       return;
     }
@@ -86,12 +107,15 @@ export default function Dashboard() {
     const booked = data?.map(a => a.time) || [];
     const free = allTimes.filter(t => !booked.includes(t));
 
-    setAvailableTimes(free);
+    setAvailableTimes(free.length > 0 ? free : allTimes);
   };
 
-  // ➕ ADD
+  // ➕ ADD (ANTI DOUBLE SUBMIT)
   const addAppointment = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
     setError("");
     setSuccess("");
 
@@ -134,7 +158,7 @@ export default function Dashboard() {
     window.location.href = "/login";
   };
 
-  // 🤖 AI CHAT
+  // 🤖 AI
   const handleSendMessage = () => {
     if (!message) return;
 
@@ -184,6 +208,13 @@ export default function Dashboard() {
       {/* MAIN */}
       <div className="dashboard-main">
 
+        {/* OFFLINE */}
+        {offline && (
+          <p style={{ color: "red", fontWeight: "bold" }}>
+            ⚠ Nuk ka internet!
+          </p>
+        )}
+
         <h2>Rezervo Termin</h2>
 
         <form onSubmit={addAppointment} className="form-card">
@@ -212,23 +243,28 @@ export default function Dashboard() {
             onChange={(e) => setTime(e.target.value)}
           >
             <option value="">Zgjidh Orën</option>
-
-            {availableTimes.length > 0 ? (
-              availableTimes.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))
-            ) : (
-              <option disabled>Nuk ka orë të lira</option>
-            )}
+            {availableTimes.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
           </select>
 
           <button type="submit">Rezervo</button>
 
-          {error && <p className="error">{error}</p>}
+          {error && (
+            <>
+              <p className="error">{error}</p>
+              <button onClick={fetchAppointments}>Riprovo 🔄</button>
+            </>
+          )}
+
           {success && <p className="success">{success}</p>}
         </form>
 
+        {/* LOADING */}
+        {loading && <p>Duke u ngarkuar...</p>}
+
         <h3>Terminet e tua</h3>
+
         <div className="appointments-list">
           {appointments.length === 0 ? (
             <p>Nuk keni termine.</p>
@@ -247,7 +283,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* AI CHAT */}
+        {/* AI */}
         <div className="chat-container">
           <h3>🤖 AI Asistent</h3>
 
