@@ -93,6 +93,24 @@ function getDoctorProfile(doctorName, index) {
   };
 }
 
+function getReadableSupabaseError(error, fallbackMessage) {
+  if (!error) return fallbackMessage;
+
+  if (error.code === "42501") {
+    return "Nuk ke leje per kete veprim ne databaze. Kontrollo RLS policy te tabeles appointments.";
+  }
+
+  if (error.code === "23505") {
+    return "Ky termin duket se ekziston tashme.";
+  }
+
+  if (error.message) {
+    return `${fallbackMessage} ${error.message}`;
+  }
+
+  return fallbackMessage;
+}
+
 function getAssistantReply({
   question,
   appointments,
@@ -433,10 +451,14 @@ export default function Dashboard() {
 
     if (appointmentError) {
       setError(
-        currentEditingId
-          ? "Gabim gjate perditesimit te terminit!"
-          : "Gabim gjate rezervimit!"
+        getReadableSupabaseError(
+          appointmentError,
+          currentEditingId
+            ? "Gabim gjate perditesimit te terminit!"
+            : "Gabim gjate rezervimit!"
+        )
       );
+      console.error("Appointment save error:", appointmentError);
       setLoading(false);
       return;
     }
