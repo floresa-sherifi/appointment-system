@@ -420,21 +420,20 @@ export default function Dashboard() {
     setLoading(true);
 
     const payload = { user_id: user.id, date, time, doctor };
-    const request = editingAppointmentId
+    const currentEditingId = editingAppointmentId;
+    const request = currentEditingId
       ? supabase
           .from("appointments")
           .update(payload)
-          .eq("id", editingAppointmentId)
+          .eq("id", currentEditingId)
           .eq("user_id", user.id)
-          .select()
-          .single()
-      : supabase.from("appointments").insert([payload]).select().single();
+      : supabase.from("appointments").insert([payload]);
 
-    const { data: savedAppointment, error: appointmentError } = await request;
+    const { error: appointmentError } = await request;
 
     if (appointmentError) {
       setError(
-        editingAppointmentId
+        currentEditingId
           ? "Gabim gjate perditesimit te terminit!"
           : "Gabim gjate rezervimit!"
       );
@@ -443,13 +442,13 @@ export default function Dashboard() {
     }
 
     setSuccess(
-      editingAppointmentId
+      currentEditingId
         ? "Termini u perditesua me sukses dhe u shfaq te lista."
         : "Termini u rezervua me sukses dhe u shtua te terminet e tua."
     );
-    setHighlightedAppointmentId(savedAppointment?.id || null);
     resetForm();
     await refreshAppointments(user, true);
+    setHighlightedAppointmentId(currentEditingId || null);
   };
 
   const startEditingAppointment = (appointment) => {
