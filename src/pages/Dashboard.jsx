@@ -27,6 +27,9 @@ const DOCTOR_PROFILES = [
     specialty: "Kardiologe",
     hospital: "Qendra HealthPlus",
     experience: "9 vite eksperience",
+    location: "Prishtine",
+    fee: "35 EUR",
+    days: ["Hene", "Merkure", "Premte"],
     photo:
       "https://images.pexels.com/photos/15752232/pexels-photo-15752232.jpeg?cs=srgb&dl=pexels-yasinaydin-15752232.jpg&fm=jpg",
     accent: "cardiology",
@@ -38,6 +41,9 @@ const DOCTOR_PROFILES = [
     specialty: "Pediater",
     hospital: "Klinika Family Care",
     experience: "7 vite eksperience",
+    location: "Prizren",
+    fee: "30 EUR",
+    days: ["Marte", "Enjte", "Shtune"],
     photo:
       "https://images.pexels.com/photos/6762876/pexels-photo-6762876.jpeg?cs=srgb&dl=pexels-usman-yousaf-708951-6762876.jpg&fm=jpg",
     accent: "pediatrics",
@@ -49,6 +55,9 @@ const DOCTOR_PROFILES = [
     specialty: "Dermatologe",
     hospital: "Skin Studio",
     experience: "11 vite eksperience",
+    location: "Peje",
+    fee: "40 EUR",
+    days: ["Hene", "Enjte", "Premte"],
     photo:
       "https://images.pexels.com/photos/32254667/pexels-photo-32254667.jpeg?cs=srgb&dl=pexels-konrads-photo-32254667.jpg&fm=jpg",
     accent: "dermatology",
@@ -257,12 +266,25 @@ export default function Dashboard() {
   const [profileName, setProfileName] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
+  const [doctorSearch, setDoctorSearch] = useState("");
   const appointmentsSectionRef = useRef(null);
 
   const doctorCards = useMemo(
     () => doctorsList.map((doctorItem, index) => getDoctorProfile(doctorItem.name, index)),
     [doctorsList]
   );
+  const filteredDoctorCards = useMemo(() => {
+    const query = doctorSearch.trim().toLowerCase();
+
+    if (!query) return doctorCards;
+
+    return doctorCards.filter((doctorCard) =>
+      [doctorCard.name, doctorCard.specialty, doctorCard.hospital, doctorCard.location]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [doctorCards, doctorSearch]);
 
   const upcomingAppointment = appointments[0] || null;
   const appointmentCount = appointments.length;
@@ -837,8 +859,19 @@ export default function Dashboard() {
               </p>
             </div>
 
+            <div className="doctor-toolbar">
+              <input
+                value={doctorSearch}
+                onChange={(e) => setDoctorSearch(e.target.value)}
+                placeholder="Kerko sipas emrit, specialitetit ose qytetit"
+              />
+              <div className="doctor-toolbar__summary">
+                {filteredDoctorCards.length} mjek{filteredDoctorCards.length !== 1 ? "e" : ""}
+              </div>
+            </div>
+
             <div className="doctor-grid">
-              {doctorCards.map((doctorCard) => (
+              {filteredDoctorCards.map((doctorCard) => (
                 <article key={doctorCard.name} className={`doctor-card ${doctorCard.accent}`}>
                   <img src={doctorCard.photo} alt={doctorCard.name} className="doctor-photo" />
                   <div className="doctor-card__body">
@@ -849,6 +882,17 @@ export default function Dashboard() {
                     <h4>{doctorCard.name}</h4>
                     <p className="doctor-specialty">{doctorCard.specialty}</p>
                     <p>{doctorCard.bio}</p>
+                    <div className="doctor-details">
+                      <span>{doctorCard.location}</span>
+                      <span>{doctorCard.fee}</span>
+                    </div>
+                    <div className="doctor-days">
+                      {doctorCard.days.map((day) => (
+                        <span key={day} className="doctor-day">
+                          {day}
+                        </span>
+                      ))}
+                    </div>
                     <div className="doctor-footer">
                       <span>{doctorCard.experience}</span>
                       <button
@@ -866,6 +910,12 @@ export default function Dashboard() {
                 </article>
               ))}
             </div>
+
+            {filteredDoctorCards.length === 0 && (
+              <div className="panel empty-doctors">
+                Nuk u gjet asnje mjek me kete kerkim.
+              </div>
+            )}
           </section>
         )}
 

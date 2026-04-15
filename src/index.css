@@ -557,6 +557,27 @@ button:disabled {
   margin-bottom: 18px;
 }
 
+.doctor-toolbar {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.doctor-toolbar input {
+  margin-top: 0;
+}
+
+.doctor-toolbar__summary {
+  min-width: 120px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(41, 73, 160, 0.08);
+  color: #28457d;
+  font-weight: 700;
+  text-align: center;
+}
+
 .doctor-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -624,8 +645,40 @@ button:disabled {
   font-weight: 700;
 }
 
+.doctor-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  color: #5f6f89;
+  font-weight: 600;
+}
+
+.doctor-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.doctor-day {
+  display: inline-flex;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(38, 83, 209, 0.08);
+  color: #2653d1;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .doctor-footer {
   margin-top: 16px;
+}
+
+.empty-doctors {
+  margin-top: 18px;
+  text-align: center;
+  color: #667792;
 }
 
 .profile-summary {
@@ -678,6 +731,8 @@ button:disabled {
   .panel-heading,
   .appointment-card,
   .chat-input,
+  .doctor-toolbar,
+  .doctor-details,
   .doctor-footer,
   .doctor-meta {
     flex-direction: column;
