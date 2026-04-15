@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
-import doctorAva from "../assets/doctor-ava.svg";
-import doctorBen from "../assets/doctor-ben.svg";
-import doctorCora from "../assets/doctor-cora.svg";
 
 const ALL_TIMES = [
   "09:00",
@@ -30,7 +27,8 @@ const DOCTOR_PROFILES = [
     specialty: "Kardiologe",
     hospital: "Qendra HealthPlus",
     experience: "9 vite eksperience",
-    photo: doctorAva,
+    photo:
+      "https://randomuser.me/api/portraits/women/44.jpg",
     accent: "cardiology",
     rating: "4.9",
     bio: "Kujdes i avancuar per zemren, konsultime preventive dhe trajtim modern.",
@@ -40,7 +38,8 @@ const DOCTOR_PROFILES = [
     specialty: "Pediater",
     hospital: "Klinika Family Care",
     experience: "7 vite eksperience",
-    photo: doctorBen,
+    photo:
+      "https://randomuser.me/api/portraits/men/32.jpg",
     accent: "pediatrics",
     rating: "4.8",
     bio: "Vizita te qeta dhe miqesore per femije, me fokus te komunikimi me prinderit.",
@@ -50,7 +49,8 @@ const DOCTOR_PROFILES = [
     specialty: "Dermatologe",
     hospital: "Skin Studio",
     experience: "11 vite eksperience",
-    photo: doctorCora,
+    photo:
+      "https://randomuser.me/api/portraits/women/68.jpg",
     accent: "dermatology",
     rating: "5.0",
     bio: "Diagnoze estetike dhe klinike me plan te personalizuar per cdo pacient.",
@@ -65,6 +65,11 @@ const SIDEBAR_ITEMS = [
 
 function toKey(value) {
   return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") || "";
+}
+
+function formatAppointment(appointment) {
+  if (!appointment) return "Nuk ke termin te rezervuar ende.";
+  return `${appointment.date} ne oren ${appointment.time} me ${appointment.doctor}.`;
 }
 
 function getDoctorProfile(doctorName, index) {
@@ -88,6 +93,133 @@ function getDoctorProfile(doctorName, index) {
   };
 }
 
+function getAssistantReply({
+  question,
+  appointments,
+  doctorCards,
+  availableTimes,
+  profileName,
+  selectedDoctor,
+  selectedDate,
+  offline,
+}) {
+  const normalized = question.toLowerCase().trim();
+  const upcomingAppointment = appointments[0];
+
+  if (!normalized) {
+    return "Shkruaj nje pyetje dhe une do mundohem te te ndihmoj.";
+  }
+
+  if (offline) {
+    return "Je offline per momentin. Lidhe internetin qe te rifreskohen te dhenat dhe terminet.";
+  }
+
+  if (
+    normalized.includes("pershendetje") ||
+    normalized.includes("tung") ||
+    normalized.includes("hello") ||
+    normalized.includes("hi")
+  ) {
+    return `Pershendetje ${profileName || "pacient"}! Mund te te ndihmoj me termine, mjeke, profil ose orare te lira.`;
+  }
+
+  if (
+    normalized.includes("termini im") ||
+    normalized.includes("termini tjeter") ||
+    normalized.includes("kur e kam termin") ||
+    normalized.includes("appointment")
+  ) {
+    return formatAppointment(upcomingAppointment);
+  }
+
+  if (
+    normalized.includes("sa termine") ||
+    normalized.includes("how many") ||
+    normalized.includes("gjithsej termine")
+  ) {
+    return appointments.length
+      ? `Ke ${appointments.length} termin${appointments.length > 1 ? "e" : ""} te regjistruara. Termini me i afert eshte ${formatAppointment(upcomingAppointment)}`
+      : "Aktualisht nuk ke asnje termin te regjistruar.";
+  }
+
+  if (
+    normalized.includes("fshi") ||
+    normalized.includes("anulo") ||
+    normalized.includes("cancel")
+  ) {
+    return appointments.length
+      ? "Per ta anuluar nje termin, shko te 'Terminet e tua' dhe kliko butonin Fshi te kartela e terminit."
+      : "Nuk ke termin per ta anuluar per momentin.";
+  }
+
+  if (
+    normalized.includes("edit") ||
+    normalized.includes("ndrysho termin") ||
+    normalized.includes("perditeso termin")
+  ) {
+    return appointments.length
+      ? "Per te ndryshuar terminin, kliko Edit te kartela e terminit dhe forma siper do mbushet automatikisht."
+      : "Fillimisht rezervo nje termin, pastaj mund ta perditesosh nga lista.";
+  }
+
+  if (
+    normalized.includes("mjek") ||
+    normalized.includes("doktor") ||
+    normalized.includes("doctor")
+  ) {
+    if (!doctorCards.length) {
+      return "Nuk ka mjeke ne liste per momentin.";
+    }
+
+    const highlightedDoctors = doctorCards
+      .slice(0, 3)
+      .map((doctor) => `${doctor.name} (${doctor.specialty})`)
+      .join(", ");
+
+    return `Mjeket qe mund te zgjedhesh jane: ${highlightedDoctors}. Mund te hapesh edhe faqen Doktoret per me shume detaje.`;
+  }
+
+  if (
+    normalized.includes("or") ||
+    normalized.includes("available") ||
+    normalized.includes("te lira")
+  ) {
+    if (!selectedDoctor || !selectedDate) {
+      return "Zgjidh fillimisht nje mjek dhe nje date, pastaj une mund te te tregoj oraret e lira.";
+    }
+
+    return availableTimes.length
+      ? `Per ${selectedDoctor} me daten ${selectedDate}, oraret e lira jane: ${availableTimes.slice(0, 6).join(", ")}${availableTimes.length > 6 ? "..." : ""}`
+      : "Nuk shoh orare te lira per zgjedhjen aktuale.";
+  }
+
+  if (
+    normalized.includes("profil") ||
+    normalized.includes("emri im") ||
+    normalized.includes("profile")
+  ) {
+    return `Te faqja Profili mund te ndryshosh emrin. Tani emri i ruajtur eshte ${profileName || "i papercaktuar"}.`;
+  }
+
+  if (
+    normalized.includes("rezervo") ||
+    normalized.includes("book") ||
+    normalized.includes("si te rezervoj")
+  ) {
+    return "Per te rezervuar, zgjidh daten, mjekun dhe oren te forma kryesore, pastaj kliko 'Rezervo terminin'.";
+  }
+
+  if (
+    normalized.includes("ndihme") ||
+    normalized.includes("help") ||
+    normalized.includes("cfare mund te besh")
+  ) {
+    return "Mund te te ndihmoj me: terminin tend te ardhshem, numrin e termineve, mjeket e disponueshem, oraret e lira, profilin dhe si te editosh ose fshish nje termin.";
+  }
+
+  return "E kuptova pyetjen, por me sakte mund te te ndihmoj nese pyet per terminin, mjeket, oraret e lira, profilin ose editimin e terminit.";
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -106,6 +238,8 @@ export default function Dashboard() {
   const [editingAppointmentId, setEditingAppointmentId] = useState(null);
   const [profileName, setProfileName] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
+  const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
+  const appointmentsSectionRef = useRef(null);
 
   const doctorCards = useMemo(
     () => doctorsList.map((doctorItem, index) => getDoctorProfile(doctorItem.name, index)),
@@ -115,7 +249,7 @@ export default function Dashboard() {
   const upcomingAppointment = appointments[0] || null;
   const appointmentCount = appointments.length;
 
-  const refreshAppointments = async (currentUser = user) => {
+  const refreshAppointments = async (currentUser = user, focusOnList = false) => {
     if (!currentUser?.id) return;
 
     setLoading(true);
@@ -127,8 +261,19 @@ export default function Dashboard() {
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
-    if (appointmentsError) setError("Gabim gjate marrjes se termineve!");
-    else setAppointments(data || []);
+    if (appointmentsError) {
+      setError("Gabim gjate marrjes se termineve!");
+    } else {
+      setAppointments(data || []);
+      if (focusOnList) {
+        window.requestAnimationFrame(() => {
+          appointmentsSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        });
+      }
+    }
 
     setLoading(false);
   };
@@ -265,6 +410,7 @@ export default function Dashboard() {
 
     setError("");
     setSuccess("");
+    setActiveView("overview");
 
     if (!date || !time || !doctor) {
       setError("Ploteso te gjitha fushat!");
@@ -280,9 +426,11 @@ export default function Dashboard() {
           .update(payload)
           .eq("id", editingAppointmentId)
           .eq("user_id", user.id)
-      : supabase.from("appointments").insert([payload]);
+          .select()
+          .single()
+      : supabase.from("appointments").insert([payload]).select().single();
 
-    const { error: appointmentError } = await request;
+    const { data: savedAppointment, error: appointmentError } = await request;
 
     if (appointmentError) {
       setError(
@@ -296,11 +444,12 @@ export default function Dashboard() {
 
     setSuccess(
       editingAppointmentId
-        ? "Termini u perditesua me sukses."
-        : "Termini u rezervua me sukses."
+        ? "Termini u perditesua me sukses dhe u shfaq te lista."
+        : "Termini u rezervua me sukses dhe u shtua te terminet e tua."
     );
+    setHighlightedAppointmentId(savedAppointment?.id || null);
     resetForm();
-    await refreshAppointments();
+    await refreshAppointments(user, true);
   };
 
   const startEditingAppointment = (appointment) => {
@@ -324,6 +473,10 @@ export default function Dashboard() {
 
     if (editingAppointmentId === id) {
       resetForm();
+    }
+
+    if (highlightedAppointmentId === id) {
+      setHighlightedAppointmentId(null);
     }
 
     refreshAppointments();
@@ -364,25 +517,18 @@ export default function Dashboard() {
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
-    let response = "";
+    const reply = getAssistantReply({
+      question: message,
+      appointments,
+      doctorCards,
+      availableTimes,
+      profileName,
+      selectedDoctor: doctor,
+      selectedDate: date,
+      offline,
+    });
 
-    if (message.toLowerCase().includes("termin")) {
-      response =
-        availableTimes.length > 0
-          ? `Termini me i afert eshte ne oren ${availableTimes[0]}.`
-          : "Nuk ka termine te lira per kete dite.";
-    } else if (message.toLowerCase().includes("mjek")) {
-      response =
-        doctorCards.length > 0
-          ? `Mund te provosh me ${doctorCards[0].name}, ${doctorCards[0].specialty}.`
-          : "Nuk ka mjeke ne liste per momentin.";
-    } else if (message.toLowerCase().includes("profil")) {
-      response = "Te profili mund te ndryshosh emrin dhe te shohesh email-in.";
-    } else {
-      response = "Shkruaj: termin / mjek / profil.";
-    }
-
-    setChat((currentChat) => [...currentChat, { user: message, bot: response }]);
+    setChat((currentChat) => [...currentChat, { user: message, bot: reply }]);
     setMessage("");
   };
 
@@ -547,7 +693,7 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <section className="panel appointments-panel wide-panel">
+            <section ref={appointmentsSectionRef} className="panel appointments-panel wide-panel">
               <div className="panel-heading">
                 <div>
                   <p className="section-eyebrow">Appointments</p>
@@ -565,7 +711,14 @@ export default function Dashboard() {
               ) : (
                 <div className="appointments-list advanced-list">
                   {appointments.map((appointment) => (
-                    <article key={appointment.id} className="appointment-card advanced-card">
+                    <article
+                      key={appointment.id}
+                      className={
+                        appointment.id === highlightedAppointmentId
+                          ? "appointment-card advanced-card appointment-card--highlight"
+                          : "appointment-card advanced-card"
+                      }
+                    >
                       <div>
                         <p className="appointment-time">
                           {appointment.date} ne {appointment.time}
@@ -603,10 +756,25 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              <div className="assistant-suggestions">
+                <button type="button" className="assistant-chip" onClick={() => setMessage("Kur e kam terminin tim te ardhshem?")}>
+                  Termini im
+                </button>
+                <button type="button" className="assistant-chip" onClick={() => setMessage("Cilet mjeke jane ne dispozicion?")}>
+                  Mjeket
+                </button>
+                <button type="button" className="assistant-chip" onClick={() => setMessage("Cilat ore jane te lira?")}>
+                  Orari i lire
+                </button>
+                <button type="button" className="assistant-chip" onClick={() => setMessage("Si ta editoj nje termin?")}>
+                  Edit termin
+                </button>
+              </div>
+
               <div className="chat-box polished-chat">
                 {chat.length === 0 ? (
                   <p className="empty-state">
-                    Provo te shkruash "termin", "mjek" ose "profil".
+                    Provo pyetje si: "Kur e kam termin?", "Cilat ore jane te lira?" ose "Si ta editoj nje termin?"
                   </p>
                 ) : (
                   chat.map((entry, index) => (

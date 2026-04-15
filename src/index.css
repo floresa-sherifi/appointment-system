@@ -446,6 +446,11 @@ button:disabled {
   border: 1px solid rgba(150, 170, 216, 0.16);
 }
 
+.appointment-card--highlight {
+  border-color: rgba(44, 108, 255, 0.44);
+  box-shadow: 0 0 0 3px rgba(44, 108, 255, 0.12);
+}
+
 .appointment-card {
   display: flex;
   justify-content: space-between;
@@ -491,6 +496,20 @@ button:disabled {
 .assistant-panel {
   display: grid;
   gap: 14px;
+}
+
+.assistant-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.assistant-chip {
+  width: auto;
+  background: #eef4ff;
+  color: #28457d;
+  box-shadow: none;
+  padding: 10px 14px;
 }
 
 .chat-box.polished-chat {
@@ -566,6 +585,7 @@ button:disabled {
   height: 240px;
   object-fit: cover;
   display: block;
+  background: #ebf1ff;
 }
 
 .doctor-card__body {
@@ -673,7 +693,8 @@ button:disabled {
   .logout-button,
   .ghost-button,
   .secondary-button,
-  .delete-btn {
+  .delete-btn,
+  .assistant-chip {
     width: 100%;
   }
 }
