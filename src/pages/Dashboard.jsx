@@ -28,7 +28,7 @@ const DOCTOR_PROFILES = [
     hospital: "Qendra HealthPlus",
     experience: "9 vite eksperience",
     photo:
-      "https://randomuser.me/api/portraits/women/44.jpg",
+      "https://images.pexels.com/photos/15752232/pexels-photo-15752232.jpeg?cs=srgb&dl=pexels-yasinaydin-15752232.jpg&fm=jpg",
     accent: "cardiology",
     rating: "4.9",
     bio: "Kujdes i avancuar per zemren, konsultime preventive dhe trajtim modern.",
@@ -39,7 +39,7 @@ const DOCTOR_PROFILES = [
     hospital: "Klinika Family Care",
     experience: "7 vite eksperience",
     photo:
-      "https://randomuser.me/api/portraits/men/32.jpg",
+      "https://images.pexels.com/photos/6762876/pexels-photo-6762876.jpeg?cs=srgb&dl=pexels-usman-yousaf-708951-6762876.jpg&fm=jpg",
     accent: "pediatrics",
     rating: "4.8",
     bio: "Vizita te qeta dhe miqesore per femije, me fokus te komunikimi me prinderit.",
@@ -50,7 +50,7 @@ const DOCTOR_PROFILES = [
     hospital: "Skin Studio",
     experience: "11 vite eksperience",
     photo:
-      "https://randomuser.me/api/portraits/women/68.jpg",
+      "https://images.pexels.com/photos/32254667/pexels-photo-32254667.jpeg?cs=srgb&dl=pexels-konrads-photo-32254667.jpg&fm=jpg",
     accent: "dermatology",
     rating: "5.0",
     bio: "Diagnoze estetike dhe klinike me plan te personalizuar per cdo pacient.",
