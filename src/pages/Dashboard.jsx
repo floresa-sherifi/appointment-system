@@ -14,15 +14,19 @@ export default function Dashboard() {
   const [chat, setChat] = useState([]);
   const [message, setMessage] = useState("");
 
-  // ✅ EXTRA STATES
   const [loading, setLoading] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
 
-  // 🔐 USER
+  // 🔐 USER + SESSION CHECK
   useEffect(() => {
     const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+
+      if (!data.user) {
+        window.location.href = "/login"; // FIX session expired
+      } else {
+        setUser(data.user);
+      }
     };
     fetchUser();
   }, []);
@@ -49,14 +53,13 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // 🔥 AUTO UPDATE ORËT
+  // 🔄 AUTO UPDATE TIMES
   useEffect(() => {
     if (doctor && date) {
       checkAvailableTimes(doctor, date);
     }
   }, [doctor, date]);
 
-  // 📊 FETCH APPOINTMENTS (ME LOADING)
   const fetchAppointments = async () => {
     setLoading(true);
 
@@ -67,19 +70,18 @@ export default function Dashboard() {
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
-    if (error) setError(error.message);
+    if (error) setError("Gabim gjatë marrjes së termineve!");
     else setAppointments(data || []);
 
     setLoading(false);
   };
 
-  // 📊 FETCH DOCTORS
   const fetchDoctors = async () => {
     const { data } = await supabase.from("doctors").select("*");
     setDoctorsList(data || []);
   };
 
-  // 🕐 ORËT
+  // 🕐 TIMES
   const checkAvailableTimes = async (doc, dt) => {
     const allTimes = [
       "09:00","09:30","10:00","10:30",
@@ -110,11 +112,11 @@ export default function Dashboard() {
     setAvailableTimes(free.length > 0 ? free : allTimes);
   };
 
-  // ➕ ADD (ANTI DOUBLE SUBMIT)
+  // ➕ ADD
   const addAppointment = async (e) => {
     e.preventDefault();
 
-    if (loading) return;
+    if (loading) return; // anti double click
 
     setError("");
     setSuccess("");
@@ -124,19 +126,22 @@ export default function Dashboard() {
       return;
     }
 
+    setLoading(true);
+
     const { error } = await supabase.from("appointments").insert([
       { user_id: user.id, date, time, doctor }
     ]);
 
-    if (error) setError(error.message);
+    if (error) setError("Gabim gjatë rezervimit!");
     else {
       setSuccess("Termini u rezervua ✅");
       setDate("");
       setTime("");
       setDoctor("");
-      setAvailableTimes([]);
       fetchAppointments();
     }
+
+    setLoading(false);
   };
 
   // 🗑 DELETE
@@ -160,7 +165,7 @@ export default function Dashboard() {
 
   // 🤖 AI
   const handleSendMessage = () => {
-    if (!message) return;
+    if (!message.trim()) return;
 
     let response = "";
 
@@ -208,7 +213,6 @@ export default function Dashboard() {
       {/* MAIN */}
       <div className="dashboard-main">
 
-        {/* OFFLINE */}
         {offline && (
           <p style={{ color: "red", fontWeight: "bold" }}>
             ⚠ Nuk ka internet!
@@ -220,17 +224,10 @@ export default function Dashboard() {
         <form onSubmit={addAppointment} className="form-card">
 
           <label>Data</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
 
           <label>Mjeku</label>
-          <select
-            value={doctor}
-            onChange={(e) => setDoctor(e.target.value)}
-          >
+          <select value={doctor} onChange={(e)=>setDoctor(e.target.value)}>
             <option value="">Zgjidh Mjekun</option>
             {doctorsList.map(d => (
               <option key={d.id} value={d.name}>{d.name}</option>
@@ -238,29 +235,29 @@ export default function Dashboard() {
           </select>
 
           <label>Ora</label>
-          <select
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          >
+          <select value={time} onChange={(e)=>setTime(e.target.value)}>
             <option value="">Zgjidh Orën</option>
             {availableTimes.map(t => (
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
 
-          <button type="submit">Rezervo</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Duke ruajtur..." : "Rezervo"}
+          </button>
 
           {error && (
             <>
               <p className="error">{error}</p>
-              <button onClick={fetchAppointments}>Riprovo 🔄</button>
+              <button type="button" onClick={fetchAppointments}>
+                Riprovo 🔄
+              </button>
             </>
           )}
 
           {success && <p className="success">{success}</p>}
         </form>
 
-        {/* LOADING */}
         {loading && <p>Duke u ngarkuar...</p>}
 
         <h3>Terminet e tua</h3>
@@ -272,10 +269,7 @@ export default function Dashboard() {
             appointments.map(a => (
               <div key={a.id} className="appointment-card">
                 <span>{a.date} në {a.time} - {a.doctor}</span>
-                <button
-                  className="delete-btn"
-                  onClick={() => deleteAppointment(a.id)}
-                >
+                <button className="delete-btn" onClick={()=>deleteAppointment(a.id)}>
                   Fshi
                 </button>
               </div>
@@ -299,7 +293,7 @@ export default function Dashboard() {
           <div className="chat-input">
             <input
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e)=>setMessage(e.target.value)}
               placeholder="Pyet diçka..."
             />
             <button onClick={handleSendMessage}>Dërgo</button>
