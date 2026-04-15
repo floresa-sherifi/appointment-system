@@ -1,11 +1,31 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+
+const ALL_TIMES = [
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+];
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
-  const [availableTimes, setAvailableTimes] = useState([]);
+  const [availableTimes, setAvailableTimes] = useState(ALL_TIMES);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [doctor, setDoctor] = useState("");
@@ -13,25 +33,42 @@ export default function Dashboard() {
   const [success, setSuccess] = useState("");
   const [chat, setChat] = useState([]);
   const [message, setMessage] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
 
-  // 🔐 USER + SESSION CHECK
+  const refreshAppointments = async () => {
+    if (!user?.id) return;
+
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
+
+    if (error) setError("Gabim gjate marrjes se termineve!");
+    else setAppointments(data || []);
+
+    setLoading(false);
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
-        window.location.href = "/login"; // FIX session expired
-      } else {
-        setUser(data.user);
+        window.location.href = "/login";
+        return;
       }
+
+      setUser(data.user);
     };
+
     fetchUser();
   }, []);
 
-  // 🌐 OFFLINE DETECTION
   useEffect(() => {
     const goOffline = () => setOffline(true);
     const goOnline = () => setOffline(false);
@@ -45,108 +82,125 @@ export default function Dashboard() {
     };
   }, []);
 
-  // 📊 FETCH
   useEffect(() => {
-    if (user) {
-      fetchAppointments();
-      fetchDoctors();
-    }
-  }, [user]);
+    if (!user?.id) return;
 
-  // 🔄 AUTO UPDATE TIMES
-  useEffect(() => {
-    if (doctor && date) {
-      checkAvailableTimes(doctor, date);
+    let cancelled = false;
+
+    async function loadDashboardData() {
+      setLoading(true);
+
+      const [{ data: appointmentsData, error: appointmentsError }, { data: doctorsData }] =
+        await Promise.all([
+          supabase
+            .from("appointments")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("date", { ascending: true })
+            .order("time", { ascending: true }),
+          supabase.from("doctors").select("*"),
+        ]);
+
+      if (cancelled) return;
+
+      if (appointmentsError) setError("Gabim gjate marrjes se termineve!");
+      else setAppointments(appointmentsData || []);
+
+      setDoctorsList(doctorsData || []);
+      setLoading(false);
     }
+
+    loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!doctor || !date) return;
+
+    let cancelled = false;
+
+    async function loadAvailableTimes() {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("time")
+        .eq("doctor", doctor)
+        .eq("date", date);
+
+      if (cancelled) return;
+
+      if (error) {
+        setAvailableTimes(ALL_TIMES);
+        return;
+      }
+
+      const bookedTimes = data?.map((appointment) => appointment.time) || [];
+      const freeTimes = ALL_TIMES.filter((slot) => !bookedTimes.includes(slot));
+      setAvailableTimes(freeTimes.length > 0 ? freeTimes : ALL_TIMES);
+    }
+
+    loadAvailableTimes();
+
+    return () => {
+      cancelled = true;
+    };
   }, [doctor, date]);
 
-  const fetchAppointments = async () => {
-    setLoading(true);
+  const handleDateChange = (e) => {
+    const nextDate = e.target.value;
+    setDate(nextDate);
 
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("date", { ascending: true })
-      .order("time", { ascending: true });
-
-    if (error) setError("Gabim gjatë marrjes së termineve!");
-    else setAppointments(data || []);
-
-    setLoading(false);
-  };
-
-  const fetchDoctors = async () => {
-    const { data } = await supabase.from("doctors").select("*");
-    setDoctorsList(data || []);
-  };
-
-  // 🕐 TIMES
-  const checkAvailableTimes = async (doc, dt) => {
-    const allTimes = [
-      "09:00","09:30","10:00","10:30",
-      "11:00","11:30","12:00","12:30",
-      "13:00","13:30","14:00","14:30",
-      "15:00","15:30","16:00","16:30","17:00"
-    ];
-
-    if (!doc || !dt) {
-      setAvailableTimes(allTimes);
-      return;
+    if (!nextDate || !doctor) {
+      setAvailableTimes(ALL_TIMES);
     }
-
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("time")
-      .eq("doctor", doc)
-      .eq("date", dt);
-
-    if (error) {
-      setAvailableTimes(allTimes);
-      return;
-    }
-
-    const booked = data?.map(a => a.time) || [];
-    const free = allTimes.filter(t => !booked.includes(t));
-
-    setAvailableTimes(free.length > 0 ? free : allTimes);
   };
 
-  // ➕ ADD
+  const handleDoctorChange = (e) => {
+    const nextDoctor = e.target.value;
+    setDoctor(nextDoctor);
+
+    if (!nextDoctor || !date) {
+      setAvailableTimes(ALL_TIMES);
+    }
+  };
+
   const addAppointment = async (e) => {
     e.preventDefault();
 
-    if (loading) return; // anti double click
+    if (loading || !user) return;
 
     setError("");
     setSuccess("");
 
     if (!date || !time || !doctor) {
-      setError("Plotëso të gjitha fushat!");
+      setError("Ploteso te gjitha fushat!");
       return;
     }
 
     setLoading(true);
 
-    const { error } = await supabase.from("appointments").insert([
-      { user_id: user.id, date, time, doctor }
-    ]);
+    const { error } = await supabase
+      .from("appointments")
+      .insert([{ user_id: user.id, date, time, doctor }]);
 
-    if (error) setError("Gabim gjatë rezervimit!");
-    else {
-      setSuccess("Termini u rezervua ✅");
-      setDate("");
-      setTime("");
-      setDoctor("");
-      fetchAppointments();
+    if (error) {
+      setError("Gabim gjate rezervimit!");
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    setSuccess("Termini u rezervua me sukses.");
+    setDate("");
+    setTime("");
+    setDoctor("");
+    setAvailableTimes(ALL_TIMES);
+    await refreshAppointments();
   };
 
-  // 🗑 DELETE
   const deleteAppointment = async (id) => {
-    if (!window.confirm("A jeni i sigurt?")) return;
+    if (!user || !window.confirm("A jeni i sigurt?")) return;
 
     await supabase
       .from("appointments")
@@ -154,34 +208,34 @@ export default function Dashboard() {
       .eq("id", id)
       .eq("user_id", user.id);
 
-    fetchAppointments();
+    refreshAppointments();
   };
 
-  // 🚪 LOGOUT
   const logout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
 
-  // 🤖 AI
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
     let response = "";
 
     if (message.toLowerCase().includes("termin")) {
-      response = availableTimes.length > 0
-        ? `Termini më i afërt: ${availableTimes[0]}`
-        : "Nuk ka termine të lira.";
+      response =
+        availableTimes.length > 0
+          ? `Termini me i afert: ${availableTimes[0]}`
+          : "Nuk ka termine te lira.";
     } else if (message.toLowerCase().includes("mjek")) {
-      response = doctorsList.length > 0
-        ? `Rekomandoj: ${doctorsList[0].name}`
-        : "Nuk ka mjekë.";
+      response =
+        doctorsList.length > 0
+          ? `Rekomandoj: ${doctorsList[0].name}`
+          : "Nuk ka mjeke.";
     } else {
       response = "Shkruaj: termin / mjek / ndihme";
     }
 
-    setChat([...chat, { user: message, bot: response }]);
+    setChat((currentChat) => [...currentChat, { user: message, bot: response }]);
     setMessage("");
   };
 
@@ -189,8 +243,6 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-wrapper">
-
-      {/* SIDEBAR */}
       <div className="sidebar">
         <div className="profile">
           <div className="avatar">
@@ -202,7 +254,7 @@ export default function Dashboard() {
         <div className="menu">
           <ul>
             <li>Terminet</li>
-            <li>Doktorët</li>
+            <li>Doktoret</li>
             <li>Profil</li>
           </ul>
         </div>
@@ -210,35 +262,34 @@ export default function Dashboard() {
         <button onClick={logout}>Logout</button>
       </div>
 
-      {/* MAIN */}
       <div className="dashboard-main">
-
         {offline && (
-          <p style={{ color: "red", fontWeight: "bold" }}>
-            ⚠ Nuk ka internet!
-          </p>
+          <p style={{ color: "red", fontWeight: "bold" }}>Nuk ka internet!</p>
         )}
 
         <h2>Rezervo Termin</h2>
 
         <form onSubmit={addAppointment} className="form-card">
-
           <label>Data</label>
-          <input type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
+          <input type="date" value={date} onChange={handleDateChange} />
 
           <label>Mjeku</label>
-          <select value={doctor} onChange={(e)=>setDoctor(e.target.value)}>
-            <option value="">Zgjidh Mjekun</option>
-            {doctorsList.map(d => (
-              <option key={d.id} value={d.name}>{d.name}</option>
+          <select value={doctor} onChange={handleDoctorChange}>
+            <option value="">Zgjidh mjekun</option>
+            {doctorsList.map((doctorOption) => (
+              <option key={doctorOption.id} value={doctorOption.name}>
+                {doctorOption.name}
+              </option>
             ))}
           </select>
 
           <label>Ora</label>
-          <select value={time} onChange={(e)=>setTime(e.target.value)}>
-            <option value="">Zgjidh Orën</option>
-            {availableTimes.map(t => (
-              <option key={t} value={t}>{t}</option>
+          <select value={time} onChange={(e) => setTime(e.target.value)}>
+            <option value="">Zgjidh oren</option>
+            {availableTimes.map((slot) => (
+              <option key={slot} value={slot}>
+                {slot}
+              </option>
             ))}
           </select>
 
@@ -249,8 +300,8 @@ export default function Dashboard() {
           {error && (
             <>
               <p className="error">{error}</p>
-              <button type="button" onClick={fetchAppointments}>
-                Riprovo 🔄
+              <button type="button" onClick={refreshAppointments}>
+                Riprovo
               </button>
             </>
           )}
@@ -266,10 +317,15 @@ export default function Dashboard() {
           {appointments.length === 0 ? (
             <p>Nuk keni termine.</p>
           ) : (
-            appointments.map(a => (
-              <div key={a.id} className="appointment-card">
-                <span>{a.date} në {a.time} - {a.doctor}</span>
-                <button className="delete-btn" onClick={()=>deleteAppointment(a.id)}>
+            appointments.map((appointment) => (
+              <div key={appointment.id} className="appointment-card">
+                <span>
+                  {appointment.date} ne {appointment.time} - {appointment.doctor}
+                </span>
+                <button
+                  className="delete-btn"
+                  onClick={() => deleteAppointment(appointment.id)}
+                >
                   Fshi
                 </button>
               </div>
@@ -277,15 +333,18 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* AI */}
         <div className="chat-container">
-          <h3>🤖 AI Asistent</h3>
+          <h3>AI Asistent</h3>
 
           <div className="chat-box">
-            {chat.map((c, i) => (
-              <div key={i}>
-                <p><strong>Ti:</strong> {c.user}</p>
-                <p><strong>AI:</strong> {c.bot}</p>
+            {chat.map((entry, index) => (
+              <div key={index}>
+                <p>
+                  <strong>Ti:</strong> {entry.user}
+                </p>
+                <p>
+                  <strong>AI:</strong> {entry.bot}
+                </p>
               </div>
             ))}
           </div>
@@ -293,13 +352,12 @@ export default function Dashboard() {
           <div className="chat-input">
             <input
               value={message}
-              onChange={(e)=>setMessage(e.target.value)}
-              placeholder="Pyet diçka..."
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Pyet dicka..."
             />
-            <button onClick={handleSendMessage}>Dërgo</button>
+            <button onClick={handleSendMessage}>Dergo</button>
           </div>
         </div>
-
       </div>
     </div>
   );

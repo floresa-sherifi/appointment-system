@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -24,7 +24,7 @@ export default function Signup() {
 
     if (error) setError(error.message);
     else {
-      alert("Kontrollo email për verifikim!");
+      alert("Kontrollo email per verifikim!");
       navigate("/login");
     }
   };
@@ -34,10 +34,7 @@ export default function Signup() {
       <div className="form-container">
         <h2>Sign Up</h2>
         <form onSubmit={handleSignup}>
-          <input
-            placeholder="Emri"
-            onChange={(e) => setName(e.target.value)}
-          />
+          <input placeholder="Emri" onChange={(e) => setName(e.target.value)} />
           <input
             placeholder="Email"
             onChange={(e) => setEmail(e.target.value)}
