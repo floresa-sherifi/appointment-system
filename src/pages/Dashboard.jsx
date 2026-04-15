@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
+import doctorAva from "../assets/doctor-ava.svg";
+import doctorBen from "../assets/doctor-ben.svg";
+import doctorCora from "../assets/doctor-cora.svg";
 
 const ALL_TIMES = [
   "09:00",
@@ -21,6 +24,70 @@ const ALL_TIMES = [
   "17:00",
 ];
 
+const DOCTOR_PROFILES = [
+  {
+    key: "ava",
+    specialty: "Kardiologe",
+    hospital: "Qendra HealthPlus",
+    experience: "9 vite eksperience",
+    photo: doctorAva,
+    accent: "cardiology",
+    rating: "4.9",
+    bio: "Kujdes i avancuar per zemren, konsultime preventive dhe trajtim modern.",
+  },
+  {
+    key: "ben",
+    specialty: "Pediater",
+    hospital: "Klinika Family Care",
+    experience: "7 vite eksperience",
+    photo: doctorBen,
+    accent: "pediatrics",
+    rating: "4.8",
+    bio: "Vizita te qeta dhe miqesore per femije, me fokus te komunikimi me prinderit.",
+  },
+  {
+    key: "cora",
+    specialty: "Dermatologe",
+    hospital: "Skin Studio",
+    experience: "11 vite eksperience",
+    photo: doctorCora,
+    accent: "dermatology",
+    rating: "5.0",
+    bio: "Diagnoze estetike dhe klinike me plan te personalizuar per cdo pacient.",
+  },
+];
+
+const SIDEBAR_ITEMS = [
+  { id: "overview", label: "Dashboard", hint: "Terminet dhe rezervimet" },
+  { id: "doctors", label: "Doktoret", hint: "Mjeket dhe specialitetet" },
+  { id: "profile", label: "Profili", hint: "Te dhenat personale" },
+];
+
+function toKey(value) {
+  return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") || "";
+}
+
+function getDoctorProfile(doctorName, index) {
+  const normalizedName = toKey(doctorName);
+  const matchedProfile = DOCTOR_PROFILES.find((profile) =>
+    normalizedName.includes(profile.key)
+  );
+
+  if (matchedProfile) {
+    return {
+      ...matchedProfile,
+      name: doctorName,
+    };
+  }
+
+  const fallbackProfile = DOCTOR_PROFILES[index % DOCTOR_PROFILES.length];
+
+  return {
+    ...fallbackProfile,
+    name: doctorName,
+  };
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -35,20 +102,32 @@ export default function Dashboard() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
+  const [activeView, setActiveView] = useState("overview");
+  const [editingAppointmentId, setEditingAppointmentId] = useState(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  const refreshAppointments = async () => {
-    if (!user?.id) return;
+  const doctorCards = useMemo(
+    () => doctorsList.map((doctorItem, index) => getDoctorProfile(doctorItem.name, index)),
+    [doctorsList]
+  );
+
+  const upcomingAppointment = appointments[0] || null;
+  const appointmentCount = appointments.length;
+
+  const refreshAppointments = async (currentUser = user) => {
+    if (!currentUser?.id) return;
 
     setLoading(true);
 
-    const { data, error } = await supabase
+    const { data, error: appointmentsError } = await supabase
       .from("appointments")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", currentUser.id)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
-    if (error) setError("Gabim gjate marrjes se termineve!");
+    if (appointmentsError) setError("Gabim gjate marrjes se termineve!");
     else setAppointments(data || []);
 
     setLoading(false);
@@ -64,6 +143,7 @@ export default function Dashboard() {
       }
 
       setUser(data.user);
+      setProfileName(data.user.user_metadata?.name || "");
     };
 
     fetchUser();
@@ -123,20 +203,24 @@ export default function Dashboard() {
     let cancelled = false;
 
     async function loadAvailableTimes() {
-      const { data, error } = await supabase
+      const { data, error: timesError } = await supabase
         .from("appointments")
-        .select("time")
+        .select("id, time")
         .eq("doctor", doctor)
         .eq("date", date);
 
       if (cancelled) return;
 
-      if (error) {
+      if (timesError) {
         setAvailableTimes(ALL_TIMES);
         return;
       }
 
-      const bookedTimes = data?.map((appointment) => appointment.time) || [];
+      const bookedTimes =
+        data
+          ?.filter((appointment) => appointment.id !== editingAppointmentId)
+          .map((appointment) => appointment.time) || [];
+
       const freeTimes = ALL_TIMES.filter((slot) => !bookedTimes.includes(slot));
       setAvailableTimes(freeTimes.length > 0 ? freeTimes : ALL_TIMES);
     }
@@ -146,7 +230,15 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [doctor, date]);
+  }, [doctor, date, editingAppointmentId]);
+
+  const resetForm = () => {
+    setDate("");
+    setTime("");
+    setDoctor("");
+    setEditingAppointmentId(null);
+    setAvailableTimes(ALL_TIMES);
+  };
 
   const handleDateChange = (e) => {
     const nextDate = e.target.value;
@@ -166,7 +258,7 @@ export default function Dashboard() {
     }
   };
 
-  const addAppointment = async (e) => {
+  const handleSubmitAppointment = async (e) => {
     e.preventDefault();
 
     if (loading || !user) return;
@@ -181,22 +273,44 @@ export default function Dashboard() {
 
     setLoading(true);
 
-    const { error } = await supabase
-      .from("appointments")
-      .insert([{ user_id: user.id, date, time, doctor }]);
+    const payload = { user_id: user.id, date, time, doctor };
+    const request = editingAppointmentId
+      ? supabase
+          .from("appointments")
+          .update(payload)
+          .eq("id", editingAppointmentId)
+          .eq("user_id", user.id)
+      : supabase.from("appointments").insert([payload]);
 
-    if (error) {
-      setError("Gabim gjate rezervimit!");
+    const { error: appointmentError } = await request;
+
+    if (appointmentError) {
+      setError(
+        editingAppointmentId
+          ? "Gabim gjate perditesimit te terminit!"
+          : "Gabim gjate rezervimit!"
+      );
       setLoading(false);
       return;
     }
 
-    setSuccess("Termini u rezervua me sukses.");
-    setDate("");
-    setTime("");
-    setDoctor("");
-    setAvailableTimes(ALL_TIMES);
+    setSuccess(
+      editingAppointmentId
+        ? "Termini u perditesua me sukses."
+        : "Termini u rezervua me sukses."
+    );
+    resetForm();
     await refreshAppointments();
+  };
+
+  const startEditingAppointment = (appointment) => {
+    setEditingAppointmentId(appointment.id);
+    setDate(appointment.date);
+    setTime(appointment.time);
+    setDoctor(appointment.doctor);
+    setActiveView("overview");
+    setSuccess("");
+    setError("");
   };
 
   const deleteAppointment = async (id) => {
@@ -208,7 +322,38 @@ export default function Dashboard() {
       .eq("id", id)
       .eq("user_id", user.id);
 
+    if (editingAppointmentId === id) {
+      resetForm();
+    }
+
     refreshAppointments();
+  };
+
+  const updateProfile = async (e) => {
+    e.preventDefault();
+
+    if (!profileName.trim()) {
+      setError("Emri nuk mund te jete bosh.");
+      return;
+    }
+
+    setProfileLoading(true);
+    setError("");
+    setSuccess("");
+
+    const { data, error: profileError } = await supabase.auth.updateUser({
+      data: { name: profileName.trim() },
+    });
+
+    if (profileError) {
+      setError("Profili nuk u perditesua.");
+      setProfileLoading(false);
+      return;
+    }
+
+    setUser(data.user);
+    setSuccess("Profili u perditesua me sukses.");
+    setProfileLoading(false);
   };
 
   const logout = async () => {
@@ -224,141 +369,375 @@ export default function Dashboard() {
     if (message.toLowerCase().includes("termin")) {
       response =
         availableTimes.length > 0
-          ? `Termini me i afert: ${availableTimes[0]}`
-          : "Nuk ka termine te lira.";
+          ? `Termini me i afert eshte ne oren ${availableTimes[0]}.`
+          : "Nuk ka termine te lira per kete dite.";
     } else if (message.toLowerCase().includes("mjek")) {
       response =
-        doctorsList.length > 0
-          ? `Rekomandoj: ${doctorsList[0].name}`
-          : "Nuk ka mjeke.";
+        doctorCards.length > 0
+          ? `Mund te provosh me ${doctorCards[0].name}, ${doctorCards[0].specialty}.`
+          : "Nuk ka mjeke ne liste per momentin.";
+    } else if (message.toLowerCase().includes("profil")) {
+      response = "Te profili mund te ndryshosh emrin dhe te shohesh email-in.";
     } else {
-      response = "Shkruaj: termin / mjek / ndihme";
+      response = "Shkruaj: termin / mjek / profil.";
     }
 
     setChat((currentChat) => [...currentChat, { user: message, bot: response }]);
     setMessage("");
   };
 
-  if (!user) return <p>Loading...</p>;
+  if (!user) return <p className="page-loading">Loading...</p>;
 
   return (
-    <div className="dashboard-wrapper">
-      <div className="sidebar">
-        <div className="profile">
-          <div className="avatar">
-            {user.user_metadata?.name?.charAt(0) || user.email.charAt(0)}
+    <div className="app-shell">
+      <aside className="sidebar-panel">
+        <div>
+          <div className="brand-mark">
+            <div className="brand-mark__icon">A</div>
+            <div>
+              <p className="brand-mark__eyebrow">Appointment System</p>
+              <h1 className="brand-mark__title">Smart Care</h1>
+            </div>
           </div>
-          <h3>{user.user_metadata?.name || user.email}</h3>
-        </div>
 
-        <div className="menu">
-          <ul>
-            <li>Terminet</li>
-            <li>Doktoret</li>
-            <li>Profil</li>
-          </ul>
-        </div>
+          <div className="sidebar-profile">
+            <div className="avatar">
+              {user.user_metadata?.name?.charAt(0) || user.email.charAt(0)}
+            </div>
+            <div>
+              <h3>{user.user_metadata?.name || "Pacient"}</h3>
+              <p>{user.email}</p>
+            </div>
+          </div>
 
-        <button onClick={logout}>Logout</button>
-      </div>
-
-      <div className="dashboard-main">
-        {offline && (
-          <p style={{ color: "red", fontWeight: "bold" }}>Nuk ka internet!</p>
-        )}
-
-        <h2>Rezervo Termin</h2>
-
-        <form onSubmit={addAppointment} className="form-card">
-          <label>Data</label>
-          <input type="date" value={date} onChange={handleDateChange} />
-
-          <label>Mjeku</label>
-          <select value={doctor} onChange={handleDoctorChange}>
-            <option value="">Zgjidh mjekun</option>
-            {doctorsList.map((doctorOption) => (
-              <option key={doctorOption.id} value={doctorOption.name}>
-                {doctorOption.name}
-              </option>
-            ))}
-          </select>
-
-          <label>Ora</label>
-          <select value={time} onChange={(e) => setTime(e.target.value)}>
-            <option value="">Zgjidh oren</option>
-            {availableTimes.map((slot) => (
-              <option key={slot} value={slot}>
-                {slot}
-              </option>
-            ))}
-          </select>
-
-          <button type="submit" disabled={loading}>
-            {loading ? "Duke ruajtur..." : "Rezervo"}
-          </button>
-
-          {error && (
-            <>
-              <p className="error">{error}</p>
-              <button type="button" onClick={refreshAppointments}>
-                Riprovo
+          <nav className="sidebar-nav">
+            {SIDEBAR_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={activeView === item.id ? "nav-item active" : "nav-item"}
+                onClick={() => setActiveView(item.id)}
+              >
+                <span>{item.label}</span>
+                <small>{item.hint}</small>
               </button>
-            </>
-          )}
+            ))}
+          </nav>
+        </div>
 
-          {success && <p className="success">{success}</p>}
-        </form>
+        <div className="sidebar-footer">
+          <div className="status-card">
+            <span className={offline ? "status-dot offline" : "status-dot"} />
+            <div>
+              <strong>{offline ? "Offline mode" : "Online"}</strong>
+              <p>
+                {offline
+                  ? "Kontrollo lidhjen me internet."
+                  : "Cdo gje eshte gati per rezervim."}
+              </p>
+            </div>
+          </div>
+          <button type="button" className="logout-button" onClick={logout}>
+            Logout
+          </button>
+        </div>
+      </aside>
 
-        {loading && <p>Duke u ngarkuar...</p>}
+      <main className="main-panel">
+        <section className="top-banner">
+          <div>
+            <p className="section-eyebrow">Portal pacienti</p>
+            <h2>Miresevjen, {user.user_metadata?.name || "pacient"}.</h2>
+            <p className="section-copy">
+              Menaxho terminet, eksploro mjeket dhe mbaj profilin tend te perditesuar.
+            </p>
+          </div>
+          <div className="hero-summary">
+            <div>
+              <span>Termini i ardhshem</span>
+              <strong>
+                {upcomingAppointment
+                  ? `${upcomingAppointment.date} / ${upcomingAppointment.time}`
+                  : "Nuk ka ende"}
+              </strong>
+            </div>
+            <div>
+              <span>Gjithsej termine</span>
+              <strong>{appointmentCount}</strong>
+            </div>
+          </div>
+        </section>
 
-        <h3>Terminet e tua</h3>
+        {error && <div className="feedback-banner error-banner">{error}</div>}
+        {success && <div className="feedback-banner success-banner">{success}</div>}
 
-        <div className="appointments-list">
-          {appointments.length === 0 ? (
-            <p>Nuk keni termine.</p>
-          ) : (
-            appointments.map((appointment) => (
-              <div key={appointment.id} className="appointment-card">
-                <span>
-                  {appointment.date} ne {appointment.time} - {appointment.doctor}
-                </span>
-                <button
-                  className="delete-btn"
-                  onClick={() => deleteAppointment(appointment.id)}
-                >
-                  Fshi
+        {activeView === "overview" && (
+          <div className="content-grid">
+            <section className="panel appointment-editor">
+              <div className="panel-heading">
+                <div>
+                  <p className="section-eyebrow">
+                    {editingAppointmentId ? "Edit appointment" : "New appointment"}
+                  </p>
+                  <h3>
+                    {editingAppointmentId
+                      ? "Perditeso terminin ekzistues"
+                      : "Rezervo nje termin te ri"}
+                  </h3>
+                </div>
+                {editingAppointmentId && (
+                  <button type="button" className="ghost-button" onClick={resetForm}>
+                    Anulo editimin
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={handleSubmitAppointment} className="stack-form">
+                <label>
+                  <span>Data</span>
+                  <input type="date" value={date} onChange={handleDateChange} />
+                </label>
+
+                <label>
+                  <span>Mjeku</span>
+                  <select value={doctor} onChange={handleDoctorChange}>
+                    <option value="">Zgjidh mjekun</option>
+                    {doctorCards.map((doctorOption) => (
+                      <option key={doctorOption.name} value={doctorOption.name}>
+                        {doctorOption.name} - {doctorOption.specialty}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Ora</span>
+                  <select value={time} onChange={(e) => setTime(e.target.value)}>
+                    <option value="">Zgjidh oren</option>
+                    {availableTimes.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button type="submit" disabled={loading}>
+                  {loading
+                    ? "Duke ruajtur..."
+                    : editingAppointmentId
+                      ? "Ruaj ndryshimet"
+                      : "Rezervo terminin"}
+                </button>
+              </form>
+            </section>
+
+            <section className="panel metrics-panel">
+              <div className="mini-stat">
+                <span>Pacient aktiv</span>
+                <strong>{user.user_metadata?.name || user.email}</strong>
+              </div>
+              <div className="mini-stat">
+                <span>Status</span>
+                <strong>{offline ? "Offline" : "Online"}</strong>
+              </div>
+              <div className="mini-stat">
+                <span>Mjeke aktive</span>
+                <strong>{doctorCards.length}</strong>
+              </div>
+            </section>
+
+            <section className="panel appointments-panel wide-panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="section-eyebrow">Appointments</p>
+                  <h3>Terminet e tua</h3>
+                </div>
+                <button type="button" className="ghost-button" onClick={() => refreshAppointments()}>
+                  Rifresko
                 </button>
               </div>
-            ))
-          )}
-        </div>
 
-        <div className="chat-container">
-          <h3>AI Asistent</h3>
+              {loading ? (
+                <p className="empty-state">Duke u ngarkuar terminet...</p>
+              ) : appointments.length === 0 ? (
+                <p className="empty-state">Nuk ke termine ende.</p>
+              ) : (
+                <div className="appointments-list advanced-list">
+                  {appointments.map((appointment) => (
+                    <article key={appointment.id} className="appointment-card advanced-card">
+                      <div>
+                        <p className="appointment-time">
+                          {appointment.date} ne {appointment.time}
+                        </p>
+                        <h4>{appointment.doctor}</h4>
+                        <span className="appointment-tag">Vizite e planifikuar</span>
+                      </div>
+                      <div className="card-actions">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => startEditingAppointment(appointment)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="delete-btn"
+                          onClick={() => deleteAppointment(appointment.id)}
+                        >
+                          Fshi
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
 
-          <div className="chat-box">
-            {chat.map((entry, index) => (
-              <div key={index}>
-                <p>
-                  <strong>Ti:</strong> {entry.user}
-                </p>
-                <p>
-                  <strong>AI:</strong> {entry.bot}
-                </p>
+            <section className="panel assistant-panel wide-panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="section-eyebrow">Assistant</p>
+                  <h3>AI Asistent</h3>
+                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="chat-input">
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Pyet dicka..."
-            />
-            <button onClick={handleSendMessage}>Dergo</button>
+              <div className="chat-box polished-chat">
+                {chat.length === 0 ? (
+                  <p className="empty-state">
+                    Provo te shkruash "termin", "mjek" ose "profil".
+                  </p>
+                ) : (
+                  chat.map((entry, index) => (
+                    <div key={index} className="chat-entry">
+                      <p>
+                        <strong>Ti:</strong> {entry.user}
+                      </p>
+                      <p>
+                        <strong>AI:</strong> {entry.bot}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="chat-input">
+                <input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Pyet dicka..."
+                />
+                <button type="button" onClick={handleSendMessage}>
+                  Dergo
+                </button>
+              </div>
+            </section>
           </div>
-        </div>
-      </div>
+        )}
+
+        {activeView === "doctors" && (
+          <section className="doctors-page">
+            <div className="panel-heading doctors-heading">
+              <div>
+                <p className="section-eyebrow">Medical team</p>
+                <h3>Doktoret e disponueshem</h3>
+              </div>
+              <p className="section-copy">
+                Zgjidh mjekun sipas specialitetit dhe kalo direkt te rezervimi.
+              </p>
+            </div>
+
+            <div className="doctor-grid">
+              {doctorCards.map((doctorCard) => (
+                <article key={doctorCard.name} className={`doctor-card ${doctorCard.accent}`}>
+                  <img src={doctorCard.photo} alt={doctorCard.name} className="doctor-photo" />
+                  <div className="doctor-card__body">
+                    <div className="doctor-meta">
+                      <span className="doctor-rating">{doctorCard.rating}</span>
+                      <span>{doctorCard.hospital}</span>
+                    </div>
+                    <h4>{doctorCard.name}</h4>
+                    <p className="doctor-specialty">{doctorCard.specialty}</p>
+                    <p>{doctorCard.bio}</p>
+                    <div className="doctor-footer">
+                      <span>{doctorCard.experience}</span>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                          setDoctor(doctorCard.name);
+                          setActiveView("overview");
+                        }}
+                      >
+                        Rezervo me kete mjek
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeView === "profile" && (
+          <div className="profile-layout">
+            <section className="panel profile-panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="section-eyebrow">Personal info</p>
+                  <h3>Profili yt</h3>
+                </div>
+              </div>
+
+              <form className="stack-form" onSubmit={updateProfile}>
+                <label>
+                  <span>Emri i plote</span>
+                  <input
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Shkruaj emrin"
+                  />
+                </label>
+
+                <label>
+                  <span>Email</span>
+                  <input value={user.email} disabled />
+                </label>
+
+                <button type="submit" disabled={profileLoading}>
+                  {profileLoading ? "Duke ruajtur..." : "Ruaj profilin"}
+                </button>
+              </form>
+            </section>
+
+            <section className="panel profile-summary">
+              <div className="profile-badge">
+                <div className="avatar large-avatar">
+                  {user.user_metadata?.name?.charAt(0) || user.email.charAt(0)}
+                </div>
+                <div>
+                  <h4>{user.user_metadata?.name || "Pacient"}</h4>
+                  <p>{user.email}</p>
+                </div>
+              </div>
+
+              <div className="mini-stat">
+                <span>Terminet aktive</span>
+                <strong>{appointmentCount}</strong>
+              </div>
+              <div className="mini-stat">
+                <span>Mjeku i fundit</span>
+                <strong>{upcomingAppointment?.doctor || "Pa rezervim"}</strong>
+              </div>
+              <div className="mini-stat">
+                <span>Status i llogarise</span>
+                <strong>Aktive</strong>
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
