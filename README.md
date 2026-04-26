@@ -33,7 +33,7 @@ Appointment System eshte nje aplikacion web per rezervimin dhe menaxhimin e term
 
 ## Live URL
 
-Live URL nuk eshte ruajtur ende ne repo. Pasi te verifikohet deploy-i ne Vercel ose platformen ku e ke hostuar, vendose linkun ketu.
+https://appointment-system-mu.vercel.app/
 
 ## Konfigurimi lokal
 
