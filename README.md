@@ -1,104 +1,65 @@
-#  Appointment System
+# Appointment System
 
-Një aplikacion web për rezervimin e termineve me mjekë, i zhvilluar me React dhe Supabase, dhe i deploy-uar në Vercel.
+Appointment System eshte nje aplikacion web per rezervimin dhe menaxhimin e termineve mjekesore. Projekti eshte ndertuar me React, Vite dhe Supabase per autentikim dhe ruajtje te te dhenave.
 
----
+## Cfare ofron projekti
 
-##  Live Demo
- https://your-vercel-link.vercel.app
+- Regjistrim dhe login me Supabase Auth
+- Dashboard i mbrojtur per perdorues te autentikuar
+- Rezervim i termineve sipas dates, mjekut dhe ores
+- Bllokim i oreve te zena per te shmangur rezervimet e dyfishta
+- Editim dhe fshirje e termineve ekzistuese
+- Liste e mjekeve me kerkim sipas emrit, specialitetit dhe qytetit
+- Perditesim i profilit te perdoruesit
+- AI assistant lokal per pyetje te shpejta rreth termineve dhe orareve
+- Gjendje `loading`, `error`, `success` dhe njoftim kur perdoruesi eshte offline
 
----
+## Teknologjite
 
-##  Përshkrimi
+- React 19
+- Vite
+- React Router
+- Supabase
+- CSS
 
-Ky aplikacion mundëson:
-- Regjistrim dhe login të përdoruesve
-- Rezervim termineve me mjekë
-- Shfaqje të termineve personale
-- Fshirje të termineve
-- Sugjerime automatike për orë të lira
-- AI asistent për ndihmë
+## Struktura e shkurter
 
----
+- `src/pages/Login.jsx` dhe `src/pages/Signup.jsx`: autentikimi
+- `src/pages/Dashboard.jsx`: dashboard, rezervimet, doktoret, profili dhe AI assistant
+- `src/components/ProtectedRoute.jsx`: mbrojtja e routes private
+- `src/context/AuthContext.jsx`: menaxhimi i sesionit
+- `src/supabaseClient.js`: konfigurimi i klientit Supabase
+- `docs/demo-plan.md`: plani i prezantimit final
 
-## 🛠 Teknologjitë
+## Live URL
 
--  React
--  Supabase (Auth + Database)
--  Vercel (Deploy)
--  CSS
+Live URL nuk eshte ruajtur ende ne repo. Pasi te verifikohet deploy-i ne Vercel ose platformen ku e ke hostuar, vendose linkun ketu.
 
----
+## Konfigurimi lokal
 
-##  Authentication
+Krijo nje file `.env` me keto variabla:
 
-- Login / Register me Supabase
-- Secili përdorues sheh vetëm të dhënat e veta
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
----
-
-## 🗄 Database
-
-Tabelat e përdorura:
-
-### `appointments`
-- id
-- user_id
-- date
-- time
-- doctor
-
-### `doctors`
-- id
-- name
-
----
-
-##  Funksionalitetet
-
- Rezervim termine  
- Shfaqje e termineve  
- Fshirje termineve  
- Orë dinamike (nuk lejon rezervim të dyfishtë)  
- Sidebar me profil  
- Logout  
-
----
-
-##  AI Feature
-
-Aplikacioni përfshin një AI asistent bazik që:
-- Sugjeron terminin më të afërt
-- Rekomandon mjekë
-- Jep ndihmë për përdoruesin
-
----
-
-##  Edge Cases
-
-Janë implementuar:
-
--  Input bosh → ndalon submit
--  Double submit → parandalohet
--  Network error → mesazh error
--  Retry button
--  Offline detection
--  App nuk crash-on
-
----
-
-##  Loading & Error States
-
-- Loading gjatë fetch
-- Error messages të qarta
-- Success feedback për user
-
----
-
-## 📦 Instalimi lokal
+Pastaj ekzekuto:
 
 ```bash
-git clone https://github.com/username/appointment-system.git
-cd appointment-system
 npm install
 npm run dev
+```
+
+## Build dhe kontroll
+
+Per kontroll lokal:
+
+```bash
+npm run build
+npm run lint
+```
+
+## Demo prep
+
+Per planin e plote te prezantimit shiko [docs/demo-plan.md](docs/demo-plan.md).
