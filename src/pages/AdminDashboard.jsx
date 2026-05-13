@@ -27,6 +27,35 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
+async function fetchAppointmentsWithFallback(userId) {
+  const allAppointmentsResult = await supabase
+    .from("appointments")
+    .select("*")
+    .order("date", { ascending: true })
+    .order("time", { ascending: true });
+
+  if (!allAppointmentsResult.error) {
+    return {
+      data: allAppointmentsResult.data || [],
+      limited: false,
+      error: null,
+    };
+  }
+
+  const ownAppointmentsResult = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("user_id", userId)
+    .order("date", { ascending: true })
+    .order("time", { ascending: true });
+
+  return {
+    data: ownAppointmentsResult.data || [],
+    limited: true,
+    error: ownAppointmentsResult.error || allAppointmentsResult.error,
+  };
+}
+
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
@@ -36,6 +65,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [limitedMode, setLimitedMode] = useState(false);
 
   const canAccessAdmin = isAdminUser(user);
 
@@ -74,21 +104,20 @@ export default function AdminDashboard() {
     setLoading(true);
     setError("");
 
-    const [{ data: appointmentsData, error: appointmentsError }, { data: doctorsData }] =
+    const [{ data: appointmentsData, limited, error: appointmentsError }, { data: doctorsData }] =
       await Promise.all([
-        supabase
-          .from("appointments")
-          .select("*")
-          .order("date", { ascending: true })
-          .order("time", { ascending: true }),
+        fetchAppointmentsWithFallback(user.id),
         supabase.from("doctors").select("*"),
       ]);
 
+    setAppointments(appointmentsData || []);
+    setDoctors(doctorsData || []);
+    setLimitedMode(limited);
+
     if (appointmentsError) {
-      setError("Nuk u ngarkuan terminet. Kontrollo RLS policy per rolin admin.");
-    } else {
-      setAppointments(appointmentsData || []);
-      setDoctors(doctorsData || []);
+      setError("Supabase po lejon vetem terminet e tua per momentin. Per te pare te gjitha terminet, duhen RLS policies per admin.");
+    } else if (limited) {
+      setError("Pamje e kufizuar: po shfaqen vetem terminet e tua derisa RLS admin te aktivizohet.");
     }
 
     setLoading(false);
@@ -103,23 +132,22 @@ export default function AdminDashboard() {
       setLoading(true);
       setError("");
 
-      const [{ data: appointmentsData, error: appointmentsError }, { data: doctorsData }] =
+      const [{ data: appointmentsData, limited, error: appointmentsError }, { data: doctorsData }] =
         await Promise.all([
-          supabase
-            .from("appointments")
-            .select("*")
-            .order("date", { ascending: true })
-            .order("time", { ascending: true }),
+          fetchAppointmentsWithFallback(user.id),
           supabase.from("doctors").select("*"),
         ]);
 
       if (cancelled) return;
 
+      setAppointments(appointmentsData || []);
+      setDoctors(doctorsData || []);
+      setLimitedMode(limited);
+
       if (appointmentsError) {
-        setError("Nuk u ngarkuan terminet. Kontrollo RLS policy per rolin admin.");
-      } else {
-        setAppointments(appointmentsData || []);
-        setDoctors(doctorsData || []);
+        setError("Supabase po lejon vetem terminet e tua per momentin. Per te pare te gjitha terminet, duhen RLS policies per admin.");
+      } else if (limited) {
+        setError("Pamje e kufizuar: po shfaqen vetem terminet e tua derisa RLS admin te aktivizohet.");
       }
 
       setLoading(false);
@@ -130,7 +158,7 @@ export default function AdminDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [canAccessAdmin]);
+  }, [canAccessAdmin, user?.id]);
 
   const updateAppointmentStatus = async (appointmentId, nextStatus) => {
     setError("");
@@ -181,7 +209,9 @@ export default function AdminDashboard() {
           <p className="section-eyebrow">Clinic operations</p>
           <h1>Admin Dashboard</h1>
           <p className="section-copy">
-            Menaxho terminet, statuset dhe kapacitetin e mjekeve nga nje vend.
+            {limitedMode
+              ? "Pamje e kufizuar nga RLS: po shfaqen vetem te dhenat qe Supabase lejon per kete user."
+              : "Menaxho terminet, statuset dhe kapacitetin e mjekeve nga nje vend."}
           </p>
         </div>
         <div className="admin-actions">
