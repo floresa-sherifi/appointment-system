@@ -388,6 +388,17 @@ button:disabled {
   padding: 22px;
 }
 
+.appointment-editor--editing {
+  border-color: rgba(44, 108, 255, 0.42);
+  box-shadow: 0 0 0 3px rgba(44, 108, 255, 0.1), 0 18px 38px rgba(38, 64, 120, 0.08);
+}
+
+.edit-mode-note {
+  margin: 8px 0 0;
+  color: #52698f;
+  font-weight: 600;
+}
+
 .panel-heading {
   display: flex;
   justify-content: space-between;

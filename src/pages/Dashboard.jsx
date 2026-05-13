@@ -267,6 +267,7 @@ export default function Dashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
   const [doctorSearch, setDoctorSearch] = useState("");
+  const appointmentEditorRef = useRef(null);
   const appointmentsSectionRef = useRef(null);
 
   const doctorCards = useMemo(
@@ -501,8 +502,16 @@ export default function Dashboard() {
     setTime(appointment.time);
     setDoctor(appointment.doctor);
     setActiveView("overview");
+    setHighlightedAppointmentId(appointment.id);
     setSuccess("");
     setError("");
+
+    window.requestAnimationFrame(() => {
+      appointmentEditorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
 
   const deleteAppointment = async (id) => {
@@ -662,7 +671,14 @@ export default function Dashboard() {
 
         {activeView === "overview" && (
           <div className="content-grid">
-            <section className="panel appointment-editor">
+            <section
+              ref={appointmentEditorRef}
+              className={
+                editingAppointmentId
+                  ? "panel appointment-editor appointment-editor--editing"
+                  : "panel appointment-editor"
+              }
+            >
               <div className="panel-heading">
                 <div>
                   <p className="section-eyebrow">
@@ -673,6 +689,11 @@ export default function Dashboard() {
                       ? "Perditeso terminin ekzistues"
                       : "Rezervo nje termin te ri"}
                   </h3>
+                  {editingAppointmentId && (
+                    <p className="edit-mode-note">
+                      Ndrysho daten, mjekun ose oren dhe kliko Ruaj ndryshimet.
+                    </p>
+                  )}
                 </div>
                 {editingAppointmentId && (
                   <button type="button" className="ghost-button" onClick={resetForm}>
