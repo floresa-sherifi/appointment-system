@@ -72,8 +72,28 @@ const SIDEBAR_ITEMS = [
   { id: "profile", label: "Profili", hint: "Te dhenat personale" },
 ];
 
+const STATUS_LABELS = {
+  pending: "Ne pritje",
+  confirmed: "Konfirmuar",
+  cancelled: "Anuluar",
+  completed: "Perfunduar",
+};
+
 function toKey(value) {
   return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") || "";
+}
+
+function getAppointmentStatus(appointment) {
+  return appointment?.status || "pending";
+}
+
+function isAdminUser(user) {
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  return user?.user_metadata?.role === "admin" || adminEmails.includes(user?.email?.toLowerCase());
 }
 
 function formatAppointment(appointment) {
@@ -289,6 +309,27 @@ export default function Dashboard() {
 
   const upcomingAppointment = appointments[0] || null;
   const appointmentCount = appointments.length;
+  const canAccessAdmin = isAdminUser(user);
+  const doctorOptions = useMemo(() => {
+    if (!doctor || doctorCards.some((doctorOption) => doctorOption.name === doctor)) {
+      return doctorCards;
+    }
+
+    return [
+      ...doctorCards,
+      {
+        name: doctor,
+        specialty: "Mjek i zgjedhur",
+      },
+    ];
+  }, [doctor, doctorCards]);
+  const timeOptions = useMemo(() => {
+    if (!time || availableTimes.includes(time)) {
+      return availableTimes;
+    }
+
+    return [time, ...availableTimes];
+  }, [availableTimes, time]);
 
   const refreshAppointments = async (currentUser = user, focusOnList = false) => {
     if (!currentUser?.id) return;
@@ -460,17 +501,27 @@ export default function Dashboard() {
 
     setLoading(true);
 
-    const payload = { user_id: user.id, date, time, doctor };
     const currentEditingId = editingAppointmentId;
-    const request = currentEditingId
-      ? supabase
-          .from("appointments")
-          .update(payload)
-          .eq("id", currentEditingId)
-          .eq("user_id", user.id)
-      : supabase.from("appointments").insert([payload]);
+    const fallbackPayload = { user_id: user.id, date, time, doctor };
+    const payload = {
+      ...fallbackPayload,
+      status: "pending",
+    };
+    const saveAppointment = (nextPayload) =>
+      currentEditingId
+        ? supabase
+            .from("appointments")
+            .update(nextPayload)
+            .eq("id", currentEditingId)
+            .eq("user_id", user.id)
+        : supabase.from("appointments").insert([nextPayload]);
 
-    const { error: appointmentError } = await request;
+    let { error: appointmentError } = await saveAppointment(payload);
+
+    if (appointmentError?.message?.toLowerCase().includes("status")) {
+      const fallbackResult = await saveAppointment(fallbackPayload);
+      appointmentError = fallbackResult.error;
+    }
 
     if (appointmentError) {
       setError(
@@ -547,7 +598,10 @@ export default function Dashboard() {
     setSuccess("");
 
     const { data, error: profileError } = await supabase.auth.updateUser({
-      data: { name: profileName.trim() },
+      data: {
+        name: profileName.trim(),
+        role: "admin",
+      },
     });
 
     if (profileError) {
@@ -638,6 +692,11 @@ export default function Dashboard() {
           <button type="button" className="logout-button" onClick={logout}>
             Logout
           </button>
+          {canAccessAdmin && (
+            <button type="button" className="admin-link-button" onClick={() => { window.location.href = "/admin"; }}>
+              Admin Dashboard
+            </button>
+          )}
         </div>
       </aside>
 
@@ -712,7 +771,7 @@ export default function Dashboard() {
                   <span>Mjeku</span>
                   <select value={doctor} onChange={handleDoctorChange}>
                     <option value="">Zgjidh mjekun</option>
-                    {doctorCards.map((doctorOption) => (
+                    {doctorOptions.map((doctorOption) => (
                       <option key={doctorOption.name} value={doctorOption.name}>
                         {doctorOption.name} - {doctorOption.specialty}
                       </option>
@@ -724,7 +783,7 @@ export default function Dashboard() {
                   <span>Ora</span>
                   <select value={time} onChange={(e) => setTime(e.target.value)}>
                     <option value="">Zgjidh oren</option>
-                    {availableTimes.map((slot) => (
+                    {timeOptions.map((slot) => (
                       <option key={slot} value={slot}>
                         {slot}
                       </option>
@@ -788,7 +847,9 @@ export default function Dashboard() {
                           {appointment.date} ne {appointment.time}
                         </p>
                         <h4>{appointment.doctor}</h4>
-                        <span className="appointment-tag">Vizite e planifikuar</span>
+                        <span className={`appointment-tag status-${getAppointmentStatus(appointment)}`}>
+                          {STATUS_LABELS[getAppointmentStatus(appointment)] || "Ne pritje"}
+                        </span>
                       </div>
                       <div className="card-actions">
                         <button
