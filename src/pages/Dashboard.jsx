@@ -88,12 +88,14 @@ function getAppointmentStatus(appointment) {
 }
 
 function isAdminUser(user) {
+  const defaultAdminEmails = ["floresasherifi97@gmail.com"];
   const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
+  const allowedAdminEmails = [...defaultAdminEmails, ...adminEmails];
 
-  return user?.user_metadata?.role === "admin" || adminEmails.includes(user?.email?.toLowerCase());
+  return user?.user_metadata?.role === "admin" || allowedAdminEmails.includes(user?.email?.toLowerCase());
 }
 
 function formatAppointment(appointment) {
