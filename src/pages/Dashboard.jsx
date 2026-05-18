@@ -98,6 +98,35 @@ function isAdminUser(user) {
   return user?.user_metadata?.role === "admin" || allowedAdminEmails.includes(user?.email?.toLowerCase());
 }
 
+async function sendAppointmentEmailNotification(type, appointment, user) {
+  if (!appointment || !user?.email) return;
+
+  try {
+    const { error } = await supabase.functions.invoke("send-appointment-email", {
+      body: {
+        type,
+        appointment: {
+          id: appointment.id,
+          date: appointment.date,
+          time: appointment.time,
+          doctor: appointment.doctor,
+          status: getAppointmentStatus(appointment),
+        },
+        patient: {
+          email: user.email,
+          name: user.user_metadata?.name || user.email,
+        },
+      },
+    });
+
+    if (error) {
+      console.warn("Appointment email notification failed:", error.message);
+    }
+  } catch (notificationError) {
+    console.warn("Appointment email notification failed:", notificationError);
+  }
+}
+
 function formatAppointment(appointment) {
   if (!appointment) return "Nuk ke termin te rezervuar ende.";
   return `${appointment.date} ne oren ${appointment.time} me ${appointment.doctor}.`;
@@ -516,12 +545,15 @@ export default function Dashboard() {
             .update(nextPayload)
             .eq("id", currentEditingId)
             .eq("user_id", user.id)
-        : supabase.from("appointments").insert([nextPayload]);
+            .select("*")
+            .single()
+        : supabase.from("appointments").insert([nextPayload]).select("*").single();
 
-    let { error: appointmentError } = await saveAppointment(payload);
+    let { data: savedAppointment, error: appointmentError } = await saveAppointment(payload);
 
     if (appointmentError?.message?.toLowerCase().includes("status")) {
       const fallbackResult = await saveAppointment(fallbackPayload);
+      savedAppointment = fallbackResult.data;
       appointmentError = fallbackResult.error;
     }
 
@@ -543,6 +575,11 @@ export default function Dashboard() {
       currentEditingId
         ? "Termini u perditesua me sukses dhe u shfaq te lista."
         : "Termini u rezervua me sukses dhe u shtua te terminet e tua."
+    );
+    await sendAppointmentEmailNotification(
+      currentEditingId ? "appointment_updated" : "appointment_booked",
+      savedAppointment || { id: currentEditingId, ...fallbackPayload },
+      user
     );
     resetForm();
     await refreshAppointments(user, true);
@@ -570,11 +607,19 @@ export default function Dashboard() {
   const deleteAppointment = async (id) => {
     if (!user || !window.confirm("A jeni i sigurt?")) return;
 
-    await supabase
+    const appointmentToCancel = appointments.find((appointment) => appointment.id === id);
+    const { error: deleteError } = await supabase
       .from("appointments")
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);
+
+    if (deleteError) {
+      setError("Termini nuk u anulua. Provo perseri.");
+      return;
+    }
+
+    await sendAppointmentEmailNotification("appointment_cancelled", appointmentToCancel, user);
 
     if (editingAppointmentId === id) {
       resetForm();
