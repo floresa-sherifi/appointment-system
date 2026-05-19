@@ -27,7 +27,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -66,6 +67,7 @@ select {
 
 input,
 select,
+textarea,
 button {
   width: 100%;
   padding: 14px 16px;
@@ -76,8 +78,14 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   background: #fbfdff;
+}
+
+textarea {
+  min-height: 132px;
+  resize: vertical;
 }
 
 button {
@@ -731,6 +739,28 @@ button:disabled {
 .profile-badge {
   justify-content: flex-start;
   padding: 10px 0 18px;
+}
+
+.profile-notes {
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #fff8f1, #f4fbff);
+  border: 1px solid rgba(150, 170, 216, 0.2);
+}
+
+.profile-notes span {
+  display: block;
+  color: #677791;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.profile-notes p {
+  margin: 0;
+  color: #203150;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .admin-shell {

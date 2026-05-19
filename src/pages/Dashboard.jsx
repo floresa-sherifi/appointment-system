@@ -276,7 +276,7 @@ function getAssistantReply({
     normalized.includes("emri im") ||
     normalized.includes("profile")
   ) {
-    return `Te faqja Profili mund te ndryshosh emrin. Tani emri i ruajtur eshte ${profileName || "i papercaktuar"}.`;
+    return `Te faqja Profili mund te ndryshosh emrin, telefonin, datelindjen dhe shenimet mjekesore bazike. Tani emri i ruajtur eshte ${profileName || "i papercaktuar"}.`;
   }
 
   if (
@@ -315,6 +315,9 @@ export default function Dashboard() {
   const [activeView, setActiveView] = useState("overview");
   const [editingAppointmentId, setEditingAppointmentId] = useState(null);
   const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileBirthDate, setProfileBirthDate] = useState("");
+  const [profileMedicalNotes, setProfileMedicalNotes] = useState("");
   const [profileLoading, setProfileLoading] = useState(false);
   const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
   const [doctorSearch, setDoctorSearch] = useState("");
@@ -402,6 +405,9 @@ export default function Dashboard() {
 
       setUser(data.user);
       setProfileName(data.user.user_metadata?.name || "");
+      setProfilePhone(data.user.user_metadata?.phone || "");
+      setProfileBirthDate(data.user.user_metadata?.birth_date || "");
+      setProfileMedicalNotes(data.user.user_metadata?.medical_notes || "");
     };
 
     fetchUser();
@@ -646,8 +652,11 @@ export default function Dashboard() {
 
     const { data, error: profileError } = await supabase.auth.updateUser({
       data: {
+        ...user.user_metadata,
         name: profileName.trim(),
-        role: "admin",
+        phone: profilePhone.trim(),
+        birth_date: profileBirthDate,
+        medical_notes: profileMedicalNotes.trim(),
       },
     });
 
@@ -1073,6 +1082,35 @@ export default function Dashboard() {
                   <input value={user.email} disabled />
                 </label>
 
+                <label>
+                  <span>Telefoni</span>
+                  <input
+                    type="tel"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    placeholder="+383 44 000 000"
+                  />
+                </label>
+
+                <label>
+                  <span>Datelindja</span>
+                  <input
+                    type="date"
+                    value={profileBirthDate}
+                    onChange={(e) => setProfileBirthDate(e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  <span>Shenime mjekesore bazike</span>
+                  <textarea
+                    value={profileMedicalNotes}
+                    onChange={(e) => setProfileMedicalNotes(e.target.value)}
+                    placeholder="Alergji, terapi aktuale, diagnoza te rendesishme..."
+                    rows={5}
+                  />
+                </label>
+
                 <button type="submit" disabled={profileLoading}>
                   {profileLoading ? "Duke ruajtur..." : "Ruaj profilin"}
                 </button>
@@ -1095,8 +1133,20 @@ export default function Dashboard() {
                 <strong>{appointmentCount}</strong>
               </div>
               <div className="mini-stat">
+                <span>Telefoni</span>
+                <strong>{user.user_metadata?.phone || "Pa telefon"}</strong>
+              </div>
+              <div className="mini-stat">
+                <span>Datelindja</span>
+                <strong>{user.user_metadata?.birth_date || "E papercaktuar"}</strong>
+              </div>
+              <div className="mini-stat">
                 <span>Mjeku i fundit</span>
                 <strong>{upcomingAppointment?.doctor || "Pa rezervim"}</strong>
+              </div>
+              <div className="profile-notes">
+                <span>Shenime mjekesore</span>
+                <p>{user.user_metadata?.medical_notes || "Nuk ka shenime te ruajtura."}</p>
               </div>
               <div className="mini-stat">
                 <span>Status i llogarise</span>
