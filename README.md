@@ -10,7 +10,10 @@ Appointment System eshte nje aplikacion web per rezervimin dhe menaxhimin e term
 - Bllokim i oreve te zena per te shmangur rezervimet e dyfishta
 - Editim dhe fshirje e termineve ekzistuese
 - Liste e mjekeve me kerkim sipas emrit, specialitetit dhe qytetit
-- Perditesim i profilit te perdoruesit
+- Profil pacienti me emer, telefon, datelindje dhe shenime mjekesore bazike
+- Email notifications per rezervim, ndryshim dhe anulim termini
+- Supabase Edge Function per email dhe kujtesa 24h
+- Admin dashboard per kontroll te termineve
 - AI assistant lokal per pyetje te shpejta rreth termineve dhe orareve
 - Gjendje `loading`, `error`, `success` dhe njoftim kur perdoruesi eshte offline
 
@@ -26,10 +29,14 @@ Appointment System eshte nje aplikacion web per rezervimin dhe menaxhimin e term
 
 - `src/pages/Login.jsx` dhe `src/pages/Signup.jsx`: autentikimi
 - `src/pages/Dashboard.jsx`: dashboard, rezervimet, doktoret, profili dhe AI assistant
+- `src/pages/AdminDashboard.jsx`: paneli i adminit
 - `src/components/ProtectedRoute.jsx`: mbrojtja e routes private
 - `src/context/AuthContext.jsx`: menaxhimi i sesionit
 - `src/supabaseClient.js`: konfigurimi i klientit Supabase
+- `supabase/functions/send-appointment-email/index.ts`: Edge Function per email notifications
 - `docs/demo-plan.md`: plani i prezantimit final
+- `docs/email-notifications.md`: setup per email notifications
+- `docs/email-notifications.sql`: SQL per log-et e email reminders
 
 ## Live URL
 
@@ -59,6 +66,15 @@ Per kontroll lokal:
 npm run build
 npm run lint
 ```
+
+## Email notifications
+
+Email notifications perdorin Supabase Edge Functions dhe Resend.
+
+Setup-i i plote eshte te:
+
+- [docs/email-notifications.md](docs/email-notifications.md)
+- [docs/email-notifications.sql](docs/email-notifications.sql)
 
 ## Demo prep
 
