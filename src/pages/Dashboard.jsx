@@ -298,6 +298,51 @@ function getAssistantReply({
   return "E kuptova pyetjen, por me sakte mund te te ndihmoj nese pyet per terminin, mjeket, oraret e lira, profilin ose editimin e terminit.";
 }
 
+async function getGroqAssistantReply({
+  question,
+  appointments,
+  doctorCards,
+  availableTimes,
+  profileName,
+  selectedDoctor,
+  selectedDate,
+  chatHistory,
+}) {
+  const { data, error } = await supabase.functions.invoke("groq-assistant", {
+    body: {
+      question,
+      appointments: appointments.map((appointment) => ({
+        date: appointment.date,
+        time: appointment.time,
+        doctor: appointment.doctor,
+        status: getAppointmentStatus(appointment),
+      })),
+      doctors: doctorCards.map((doctorCard) => ({
+        name: doctorCard.name,
+        specialty: doctorCard.specialty,
+        location: doctorCard.location,
+        fee: doctorCard.fee,
+        days: doctorCard.days,
+      })),
+      availableTimes,
+      profileName,
+      selectedDoctor,
+      selectedDate,
+      chatHistory,
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.reply) {
+    throw new Error("AI assistant returned an empty reply.");
+  }
+
+  return data.reply;
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
@@ -310,6 +355,7 @@ export default function Dashboard() {
   const [success, setSuccess] = useState("");
   const [chat, setChat] = useState([]);
   const [message, setMessage] = useState("");
+  const [assistantLoading, setAssistantLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
   const [activeView, setActiveView] = useState("overview");
@@ -676,11 +722,15 @@ export default function Dashboard() {
     window.location.href = "/login";
   };
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
+  const handleSendMessage = async () => {
+    const question = message.trim();
+    if (!question || assistantLoading) return;
 
-    const reply = getAssistantReply({
-      question: message,
+    setMessage("");
+    setAssistantLoading(true);
+
+    const fallbackReply = getAssistantReply({
+      question,
       appointments,
       doctorCards,
       availableTimes,
@@ -690,8 +740,31 @@ export default function Dashboard() {
       offline,
     });
 
-    setChat((currentChat) => [...currentChat, { user: message, bot: reply }]);
-    setMessage("");
+    if (offline) {
+      setChat((currentChat) => [...currentChat, { user: question, bot: fallbackReply }]);
+      setAssistantLoading(false);
+      return;
+    }
+
+    try {
+      const reply = await getGroqAssistantReply({
+        question,
+        appointments,
+        doctorCards,
+        availableTimes,
+        profileName,
+        selectedDoctor: doctor,
+        selectedDate: date,
+        chatHistory: chat,
+      });
+
+      setChat((currentChat) => [...currentChat, { user: question, bot: reply }]);
+    } catch (assistantError) {
+      console.warn("Groq assistant failed, using local fallback:", assistantError);
+      setChat((currentChat) => [...currentChat, { user: question, bot: fallbackReply }]);
+    } finally {
+      setAssistantLoading(false);
+    }
   };
 
   if (!user) return <p className="page-loading">Loading...</p>;
@@ -955,19 +1028,30 @@ export default function Dashboard() {
               <div className="chat-box polished-chat">
                 {chat.length === 0 ? (
                   <p className="empty-state">
-                    Provo pyetje si: "Kur e kam termin?", "Cilat ore jane te lira?" ose "Si ta editoj nje termin?"
+                    {assistantLoading
+                      ? "AI po pergatit pergjigjen..."
+                      : 'Provo pyetje si: "Kur e kam termin?", "Cilat ore jane te lira?" ose "Si ta editoj nje termin?"'}
                   </p>
                 ) : (
-                  chat.map((entry, index) => (
-                    <div key={index} className="chat-entry">
-                      <p>
-                        <strong>Ti:</strong> {entry.user}
-                      </p>
-                      <p>
-                        <strong>AI:</strong> {entry.bot}
-                      </p>
-                    </div>
-                  ))
+                  <>
+                    {chat.map((entry, index) => (
+                      <div key={index} className="chat-entry">
+                        <p>
+                          <strong>Ti:</strong> {entry.user}
+                        </p>
+                        <p>
+                          <strong>AI:</strong> {entry.bot}
+                        </p>
+                      </div>
+                    ))}
+                    {assistantLoading && (
+                      <div className="chat-entry">
+                        <p>
+                          <strong>AI:</strong> Duke menduar...
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -975,10 +1059,15 @@ export default function Dashboard() {
                 <input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSendMessage();
+                    }
+                  }}
                   placeholder="Pyet dicka..."
                 />
-                <button type="button" onClick={handleSendMessage}>
-                  Dergo
+                <button type="button" onClick={handleSendMessage} disabled={assistantLoading}>
+                  {assistantLoading ? "Duke derguar..." : "Dergo"}
                 </button>
               </div>
             </section>
