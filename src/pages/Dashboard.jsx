@@ -79,6 +79,8 @@ const STATUS_LABELS = {
   completed: "Perfunduar",
 };
 
+const ALL_SPECIALTIES_FILTER = "Te gjithe";
+
 function toKey(value) {
   return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") || "";
 }
@@ -367,6 +369,7 @@ export default function Dashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
   const [doctorSearch, setDoctorSearch] = useState("");
+  const [bookingSpecialty, setBookingSpecialty] = useState(ALL_SPECIALTIES_FILTER);
   const appointmentEditorRef = useRef(null);
   const appointmentsSectionRef = useRef(null);
 
@@ -403,6 +406,22 @@ export default function Dashboard() {
       },
     ];
   }, [doctor, doctorCards]);
+  const bookingSpecialties = useMemo(
+    () => [
+      ALL_SPECIALTIES_FILTER,
+      ...Array.from(new Set(doctorOptions.map((doctorOption) => doctorOption.specialty).filter(Boolean))),
+    ],
+    [doctorOptions]
+  );
+  const bookingDoctorCards = useMemo(() => {
+    if (bookingSpecialty === ALL_SPECIALTIES_FILTER) return doctorOptions;
+
+    return doctorOptions.filter((doctorOption) => doctorOption.specialty === bookingSpecialty);
+  }, [bookingSpecialty, doctorOptions]);
+  const selectedDoctorProfile = useMemo(
+    () => doctorOptions.find((doctorOption) => doctorOption.name === doctor) || null,
+    [doctor, doctorOptions]
+  );
   const timeOptions = useMemo(() => {
     if (!time || availableTimes.includes(time)) {
       return availableTimes;
@@ -561,6 +580,14 @@ export default function Dashboard() {
 
   const handleDoctorChange = (e) => {
     const nextDoctor = e.target.value;
+    setDoctor(nextDoctor);
+
+    if (!nextDoctor || !date) {
+      setAvailableTimes(ALL_TIMES);
+    }
+  };
+
+  const chooseDoctorForBooking = (nextDoctor) => {
     setDoctor(nextDoctor);
 
     if (!nextDoctor || !date) {
@@ -896,29 +923,118 @@ export default function Dashboard() {
                   <input type="date" value={date} onChange={handleDateChange} />
                 </label>
 
-                <label>
-                  <span>Mjeku</span>
-                  <select value={doctor} onChange={handleDoctorChange}>
-                    <option value="">Zgjidh mjekun</option>
-                    {doctorOptions.map((doctorOption) => (
-                      <option key={doctorOption.name} value={doctorOption.name}>
-                        {doctorOption.name} - {doctorOption.specialty}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="booking-step">
+                  <div className="booking-step__heading">
+                    <span>Mjeku</span>
+                    <small>{doctor ? "Mjeku eshte zgjedhur" : "Zgjidh sipas specialitetit"}</small>
+                  </div>
 
-                <label>
-                  <span>Ora</span>
-                  <select value={time} onChange={(e) => setTime(e.target.value)}>
-                    <option value="">Zgjidh oren</option>
-                    {timeOptions.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
+                  <div className="specialty-filter">
+                    {bookingSpecialties.map((specialty) => (
+                      <button
+                        key={specialty}
+                        type="button"
+                        className={
+                          bookingSpecialty === specialty
+                            ? "specialty-pill specialty-pill--active"
+                            : "specialty-pill"
+                        }
+                        onClick={() => setBookingSpecialty(specialty)}
+                      >
+                        {specialty}
+                      </button>
                     ))}
-                  </select>
-                </label>
+                  </div>
+
+                  <div className="booking-doctor-grid">
+                    {bookingDoctorCards.map((doctorOption) => (
+                      <button
+                        key={doctorOption.name}
+                        type="button"
+                        className={
+                          doctor === doctorOption.name
+                            ? `booking-doctor-card booking-doctor-card--selected ${doctorOption.accent || ""}`
+                            : `booking-doctor-card ${doctorOption.accent || ""}`
+                        }
+                        onClick={() => chooseDoctorForBooking(doctorOption.name)}
+                      >
+                        {doctorOption.photo && (
+                          <img src={doctorOption.photo} alt={doctorOption.name} />
+                        )}
+                        <span className="booking-doctor-card__name">{doctorOption.name}</span>
+                        <span className="booking-doctor-card__meta">
+                          {doctorOption.specialty}
+                          {doctorOption.location ? ` / ${doctorOption.location}` : ""}
+                        </span>
+                        <span className="booking-doctor-card__footer">
+                          <strong>{doctorOption.rating || "4.8"}</strong>
+                          <span>{doctorOption.fee || "Cmimi sipas klinikes"}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="compact-select">
+                    <span>Ose zgjidh nga lista</span>
+                    <select value={doctor} onChange={handleDoctorChange}>
+                      <option value="">Zgjidh mjekun</option>
+                      {doctorOptions.map((doctorOption) => (
+                        <option key={doctorOption.name} value={doctorOption.name}>
+                          {doctorOption.name} - {doctorOption.specialty}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="booking-step">
+                  <div className="booking-step__heading">
+                    <span>Ora</span>
+                    <small>
+                      {doctor && date
+                        ? "Zgjidh nje slot te lire"
+                        : "Zgjidh daten dhe mjekun per disponueshmeri"}
+                    </small>
+                  </div>
+
+                  <div className="time-slot-grid">
+                    {ALL_TIMES.map((slot) => {
+                      const isAvailable = timeOptions.includes(slot);
+                      const isSelected = time === slot;
+
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          className={isSelected ? "time-slot time-slot--selected" : "time-slot"}
+                          disabled={!isAvailable}
+                          onClick={() => setTime(slot)}
+                        >
+                          {slot}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="booking-summary">
+                  <div>
+                    <span>Mjeku</span>
+                    <strong>{doctor || "Pa zgjedhur"}</strong>
+                  </div>
+                  <div>
+                    <span>Data</span>
+                    <strong>{date || "Pa zgjedhur"}</strong>
+                  </div>
+                  <div>
+                    <span>Ora</span>
+                    <strong>{time || "Pa zgjedhur"}</strong>
+                  </div>
+                  <div>
+                    <span>Cmimi</span>
+                    <strong>{selectedDoctorProfile?.fee || "Sipas klinikes"}</strong>
+                  </div>
+                </div>
 
                 <button type="submit" disabled={loading}>
                   {loading
