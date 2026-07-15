@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/useAuth";
-import { isAdminUser } from "../utils/roles";
+import { getDisplayName, isAdminUser, isDoctorUser } from "../utils/roles";
 
 const STATUS_OPTIONS = ["pending", "confirmed", "cancelled", "completed"];
 
@@ -17,64 +17,29 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
-async function fetchAppointmentsWithFallback(userId) {
-  const allAppointmentsResult = await supabase
-    .from("appointments")
-    .select("*")
-    .order("date", { ascending: true })
-    .order("time", { ascending: true });
-
-  if (!allAppointmentsResult.error) {
-    return {
-      data: allAppointmentsResult.data || [],
-      limited: false,
-      error: null,
-    };
-  }
-
-  const ownAppointmentsResult = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: true })
-    .order("time", { ascending: true });
-
-  return {
-    data: ownAppointmentsResult.data || [],
-    limited: true,
-    error: ownAppointmentsResult.error || allAppointmentsResult.error,
-  };
-}
-
-export default function AdminDashboard() {
+export default function DoctorDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
-  const [doctors, setDoctors] = useState([]);
+  const [doctorFilter, setDoctorFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [limitedMode, setLimitedMode] = useState(false);
 
-  const canAccessAdmin = isAdminUser(user);
+  const canAccessDoctorPanel = isDoctorUser(user) || isAdminUser(user);
+  const doctorName = getDisplayName(user, "Mjek");
 
-  const filteredAppointments = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
+  const visibleAppointments = useMemo(() => {
     return appointments.filter((appointment) => {
-      const status = getAppointmentStatus(appointment);
-      const matchesStatus = statusFilter === "all" || status === statusFilter;
-      const matchesSearch =
-        !query ||
-        [appointment.doctor, appointment.date, appointment.time, appointment.user_id]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
+      const matchesDoctor =
+        !doctorFilter.trim() ||
+        appointment.doctor?.toLowerCase().includes(doctorFilter.trim().toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" || getAppointmentStatus(appointment) === statusFilter;
 
-      return matchesStatus && matchesSearch;
+      return matchesDoctor && matchesStatus;
     });
-  }, [appointments, search, statusFilter]);
+  }, [appointments, doctorFilter, statusFilter]);
 
   const stats = useMemo(
     () =>
@@ -88,67 +53,33 @@ export default function AdminDashboard() {
     [appointments]
   );
 
-  const loadAdminData = async () => {
-    if (!canAccessAdmin) return;
+  const loadDoctorAppointments = async () => {
+    if (!canAccessDoctorPanel) return;
 
     setLoading(true);
     setError("");
 
-    const [{ data: appointmentsData, limited, error: appointmentsError }, { data: doctorsData }] =
-      await Promise.all([
-        fetchAppointmentsWithFallback(user.id),
-        supabase.from("doctors").select("*"),
-      ]);
-
-    setAppointments(appointmentsData || []);
-    setDoctors(doctorsData || []);
-    setLimitedMode(limited);
+    const { data, error: appointmentsError } = await supabase
+      .from("appointments")
+      .select("*")
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
 
     if (appointmentsError) {
-      setError("Supabase po lejon vetem terminet e tua per momentin. Per te pare te gjitha terminet, duhen RLS policies per admin.");
-    } else if (limited) {
-      setError("Pamje e kufizuar: po shfaqen vetem terminet e tua derisa RLS admin te aktivizohet.");
+      setError(
+        "Terminet nuk u ngarkuan. Per panelin e mjekut duhet RLS policy qe lejon mjekun te shohe terminet e veta."
+      );
+      setAppointments([]);
+    } else {
+      setAppointments(data || []);
     }
 
     setLoading(false);
   };
 
   useEffect(() => {
-    if (!canAccessAdmin) return;
-
-    let cancelled = false;
-
-    async function loadInitialAdminData() {
-      setLoading(true);
-      setError("");
-
-      const [{ data: appointmentsData, limited, error: appointmentsError }, { data: doctorsData }] =
-        await Promise.all([
-          fetchAppointmentsWithFallback(user.id),
-          supabase.from("doctors").select("*"),
-        ]);
-
-      if (cancelled) return;
-
-      setAppointments(appointmentsData || []);
-      setDoctors(doctorsData || []);
-      setLimitedMode(limited);
-
-      if (appointmentsError) {
-        setError("Supabase po lejon vetem terminet e tua per momentin. Per te pare te gjitha terminet, duhen RLS policies per admin.");
-      } else if (limited) {
-        setError("Pamje e kufizuar: po shfaqen vetem terminet e tua derisa RLS admin te aktivizohet.");
-      }
-
-      setLoading(false);
-    }
-
-    loadInitialAdminData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [canAccessAdmin, user?.id]);
+    loadDoctorAppointments();
+  }, [canAccessDoctorPanel]);
 
   const updateAppointmentStatus = async (appointmentId, nextStatus) => {
     setError("");
@@ -160,7 +91,7 @@ export default function AdminDashboard() {
       .eq("id", appointmentId);
 
     if (statusError) {
-      setError("Statusi nuk u perditesua. Sigurohu qe kolona status dhe RLS admin jane aktive.");
+      setError("Statusi nuk u perditesua. Kontrollo RLS policies per rolin e mjekut.");
       return;
     }
 
@@ -169,20 +100,20 @@ export default function AdminDashboard() {
         appointment.id === appointmentId ? { ...appointment, status: nextStatus } : appointment
       )
     );
-    setSuccess("Statusi u perditesua me sukses.");
+    setSuccess("Statusi i terminit u perditesua.");
   };
 
   if (authLoading) return <p className="page-loading">Loading...</p>;
 
-  if (!canAccessAdmin) {
+  if (!canAccessDoctorPanel) {
     return (
       <main className="admin-shell admin-access">
         <section className="panel">
-          <p className="section-eyebrow">Admin</p>
+          <p className="section-eyebrow">Paneli i mjekut</p>
           <h1>Akses i kufizuar</h1>
           <p className="section-copy">
-            Ky panel eshte vetem per admin. Vendos `role: admin` ne metadata te perdoruesit ose shto email-in te
-            `VITE_ADMIN_EMAILS`.
+            Ky panel eshte vetem per mjeke ose admin. Per testim, shto email-in e mjekut te
+            `VITE_DOCTOR_EMAILS` ose vendos `role: doctor` ne metadata.
           </p>
           <Link className="text-link-button" to="/dashboard">
             Kthehu te dashboard
@@ -194,21 +125,24 @@ export default function AdminDashboard() {
 
   return (
     <main className="admin-shell">
-      <section className="admin-hero">
+      <section className="admin-hero doctor-hero">
         <div>
-          <p className="section-eyebrow">Clinic operations</p>
-          <h1>Admin Dashboard</h1>
+          <p className="section-eyebrow">Doctor workspace</p>
+          <h1>Paneli i mjekut</h1>
           <p className="section-copy">
-            {limitedMode
-              ? "Pamje e kufizuar nga RLS: po shfaqen vetem te dhenat qe Supabase lejon per kete user."
-              : "Menaxho terminet, statuset dhe kapacitetin e mjekeve nga nje vend."}
+            Miresevjen, {doctorName}. Ketu mund te shohesh terminet dhe te perditesosh statusin e tyre.
           </p>
         </div>
         <div className="admin-actions">
           <Link className="text-link-button" to="/dashboard">
             Pacient view
           </Link>
-          <button type="button" className="ghost-button" onClick={loadAdminData}>
+          {isAdminUser(user) && (
+            <Link className="text-link-button" to="/admin">
+              Admin Dashboard
+            </Link>
+          )}
+          <button type="button" className="ghost-button" onClick={loadDoctorAppointments}>
             Rifresko
           </button>
         </div>
@@ -228,23 +162,19 @@ export default function AdminDashboard() {
             <strong>{stats[status]}</strong>
           </div>
         ))}
-        <div className="mini-stat">
-          <span>Mjeke</span>
-          <strong>{doctors.length}</strong>
-        </div>
       </section>
 
       <section className="panel admin-table-panel">
         <div className="panel-heading admin-table-heading">
           <div>
             <p className="section-eyebrow">Appointments</p>
-            <h3>Terminet e klinikes</h3>
+            <h3>Terminet per kontroll</h3>
           </div>
           <div className="admin-filters">
             <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Kerko mjek, date ose user id"
+              value={doctorFilter}
+              onChange={(event) => setDoctorFilter(event.target.value)}
+              placeholder="Filtro sipas emrit te mjekut"
             />
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">Te gjitha statuset</option>
@@ -259,7 +189,7 @@ export default function AdminDashboard() {
 
         {loading ? (
           <p className="empty-state">Duke u ngarkuar...</p>
-        ) : filteredAppointments.length === 0 ? (
+        ) : visibleAppointments.length === 0 ? (
           <p className="empty-state">Nuk ka termine per kete filter.</p>
         ) : (
           <div className="admin-table-wrap">
@@ -274,7 +204,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAppointments.map((appointment) => (
+                {visibleAppointments.map((appointment) => (
                   <tr key={appointment.id}>
                     <td>{appointment.date}</td>
                     <td>{appointment.time}</td>

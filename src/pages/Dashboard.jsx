@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { isAdminUser, isDoctorUser } from "../utils/roles";
 
 const ALL_TIMES = [
   "09:00",
@@ -87,17 +88,6 @@ function toKey(value) {
 
 function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
-}
-
-function isAdminUser(user) {
-  const defaultAdminEmails = ["floresasherifi97@gmail.com"];
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-  const allowedAdminEmails = [...defaultAdminEmails, ...adminEmails];
-
-  return user?.user_metadata?.role === "admin" || allowedAdminEmails.includes(user?.email?.toLowerCase());
 }
 
 async function sendAppointmentEmailNotification(type, appointment, user) {
@@ -393,6 +383,7 @@ export default function Dashboard() {
   const upcomingAppointment = appointments[0] || null;
   const appointmentCount = appointments.length;
   const canAccessAdmin = isAdminUser(user);
+  const canAccessDoctorPanel = isDoctorUser(user) || canAccessAdmin;
   const doctorOptions = useMemo(() => {
     if (!doctor || doctorCards.some((doctorOption) => doctorOption.name === doctor)) {
       return doctorCards;
@@ -851,6 +842,11 @@ export default function Dashboard() {
           {canAccessAdmin && (
             <button type="button" className="admin-link-button" onClick={() => { window.location.href = "/admin"; }}>
               Admin Dashboard
+            </button>
+          )}
+          {canAccessDoctorPanel && (
+            <button type="button" className="admin-link-button" onClick={() => { window.location.href = "/doctor"; }}>
+              Paneli i mjekut
             </button>
           )}
         </div>
