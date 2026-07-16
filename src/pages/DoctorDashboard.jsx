@@ -32,10 +32,13 @@ export default function DoctorDashboard() {
   const assignedDoctorName = getDoctorName(user);
 
   const visibleAppointments = useMemo(() => {
+    if (canViewAllAppointments && !doctorFilter.trim()) {
+      return [];
+    }
+
     return appointments.filter((appointment) => {
       const matchesDoctor =
         !canViewAllAppointments ||
-        !doctorFilter.trim() ||
         appointment.doctor?.toLowerCase().includes(doctorFilter.trim().toLowerCase());
       const matchesStatus =
         statusFilter === "all" || getAppointmentStatus(appointment) === statusFilter;
@@ -49,11 +52,11 @@ export default function DoctorDashboard() {
       STATUS_OPTIONS.reduce(
         (totals, status) => ({
           ...totals,
-          [status]: appointments.filter((appointment) => getAppointmentStatus(appointment) === status).length,
+          [status]: visibleAppointments.filter((appointment) => getAppointmentStatus(appointment) === status).length,
         }),
-        { total: appointments.length }
+        { total: visibleAppointments.length }
       ),
-    [appointments]
+    [visibleAppointments]
   );
 
   const loadDoctorAppointments = async () => {
@@ -149,7 +152,7 @@ export default function DoctorDashboard() {
           <h1>Paneli i mjekut</h1>
           <p className="section-copy">
             {canViewAllAppointments
-              ? `Miresevjen, ${doctorName}. Si admin mund te shohesh terminet e te gjithe mjekeve.`
+              ? `Miresevjen, ${doctorName}. Shkruaj emrin e nje mjeku per te pare vetem terminet e tij.`
               : `Miresevjen, ${doctorName}. Ketu shfaqen vetem terminet e tua.`}
           </p>
         </div>
@@ -195,7 +198,7 @@ export default function DoctorDashboard() {
               <input
                 value={doctorFilter}
                 onChange={(event) => setDoctorFilter(event.target.value)}
-                placeholder="Filtro sipas emrit te mjekut"
+                placeholder="Shkruaj p.sh. Dr. Elira Hoxha"
               />
             ) : (
               <input value={assignedDoctorName} disabled aria-label="Mjeku aktual" />
@@ -214,7 +217,11 @@ export default function DoctorDashboard() {
         {loading ? (
           <p className="empty-state">Duke u ngarkuar...</p>
         ) : visibleAppointments.length === 0 ? (
-          <p className="empty-state">Nuk ka termine per kete filter.</p>
+          <p className="empty-state">
+            {canViewAllAppointments && !doctorFilter.trim()
+              ? "Shkruaj emrin e mjekut per te pare terminet e tij."
+              : "Nuk ka termine per kete filter."}
+          </p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
