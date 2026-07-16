@@ -17,6 +17,14 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
+function normalizeDoctorName(value) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/\bdr\.?\s*/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export default function DoctorDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
@@ -30,16 +38,24 @@ export default function DoctorDashboard() {
   const canViewAllAppointments = isAdminUser(user);
   const doctorName = getDisplayName(user, "Mjek");
   const assignedDoctorName = getDoctorName(user);
+  const doctorOptions = useMemo(
+    () =>
+      Array.from(new Set(appointments.map((appointment) => appointment.doctor).filter(Boolean))).sort(),
+    [appointments]
+  );
 
   const visibleAppointments = useMemo(() => {
     if (canViewAllAppointments && !doctorFilter.trim()) {
       return [];
     }
 
+    const normalizedDoctorFilter = normalizeDoctorName(doctorFilter);
+
     return appointments.filter((appointment) => {
+      const normalizedAppointmentDoctor = normalizeDoctorName(appointment.doctor);
       const matchesDoctor =
         !canViewAllAppointments ||
-        appointment.doctor?.toLowerCase().includes(doctorFilter.trim().toLowerCase());
+        normalizedAppointmentDoctor.includes(normalizedDoctorFilter);
       const matchesStatus =
         statusFilter === "all" || getAppointmentStatus(appointment) === statusFilter;
 
@@ -195,11 +211,14 @@ export default function DoctorDashboard() {
           </div>
           <div className="admin-filters">
             {canViewAllAppointments ? (
-              <input
-                value={doctorFilter}
-                onChange={(event) => setDoctorFilter(event.target.value)}
-                placeholder="Shkruaj p.sh. Dr. Elira Hoxha"
-              />
+              <select value={doctorFilter} onChange={(event) => setDoctorFilter(event.target.value)}>
+                <option value="">Zgjidh mjekun</option>
+                {doctorOptions.map((doctorOption) => (
+                  <option key={doctorOption} value={doctorOption}>
+                    {doctorOption}
+                  </option>
+                ))}
+              </select>
             ) : (
               <input value={assignedDoctorName} disabled aria-label="Mjeku aktual" />
             )}
