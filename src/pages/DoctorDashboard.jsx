@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/useAuth";
-import { getDisplayName, isAdminUser, isDoctorUser } from "../utils/roles";
+import { getDisplayName, getDoctorName, isAdminUser, isDoctorUser } from "../utils/roles";
 
 const STATUS_OPTIONS = ["pending", "confirmed", "cancelled", "completed"];
 
@@ -27,11 +27,14 @@ export default function DoctorDashboard() {
   const [success, setSuccess] = useState("");
 
   const canAccessDoctorPanel = isDoctorUser(user) || isAdminUser(user);
+  const canViewAllAppointments = isAdminUser(user);
   const doctorName = getDisplayName(user, "Mjek");
+  const assignedDoctorName = getDoctorName(user);
 
   const visibleAppointments = useMemo(() => {
     return appointments.filter((appointment) => {
       const matchesDoctor =
+        !canViewAllAppointments ||
         !doctorFilter.trim() ||
         appointment.doctor?.toLowerCase().includes(doctorFilter.trim().toLowerCase());
       const matchesStatus =
@@ -39,7 +42,7 @@ export default function DoctorDashboard() {
 
       return matchesDoctor && matchesStatus;
     });
-  }, [appointments, doctorFilter, statusFilter]);
+  }, [appointments, canViewAllAppointments, doctorFilter, statusFilter]);
 
   const stats = useMemo(
     () =>
@@ -59,11 +62,26 @@ export default function DoctorDashboard() {
     setLoading(true);
     setError("");
 
-    const { data, error: appointmentsError } = await supabase
+    if (!canViewAllAppointments && !assignedDoctorName) {
+      setError(
+        "Ky user eshte mjek, por nuk ka emer mjeku ne metadata. Vendos `name` ose `doctor_name`, p.sh. Dr. Elira Hoxha."
+      );
+      setAppointments([]);
+      setLoading(false);
+      return;
+    }
+
+    let query = supabase
       .from("appointments")
       .select("*")
       .order("date", { ascending: true })
       .order("time", { ascending: true });
+
+    if (!canViewAllAppointments) {
+      query = query.eq("doctor", assignedDoctorName);
+    }
+
+    const { data, error: appointmentsError } = await query;
 
     if (appointmentsError) {
       setError(
@@ -79,7 +97,7 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     loadDoctorAppointments();
-  }, [canAccessDoctorPanel]);
+  }, [canAccessDoctorPanel, canViewAllAppointments, assignedDoctorName]);
 
   const updateAppointmentStatus = async (appointmentId, nextStatus) => {
     setError("");
@@ -130,7 +148,9 @@ export default function DoctorDashboard() {
           <p className="section-eyebrow">Doctor workspace</p>
           <h1>Paneli i mjekut</h1>
           <p className="section-copy">
-            Miresevjen, {doctorName}. Ketu mund te shohesh terminet dhe te perditesosh statusin e tyre.
+            {canViewAllAppointments
+              ? `Miresevjen, ${doctorName}. Si admin mund te shohesh terminet e te gjithe mjekeve.`
+              : `Miresevjen, ${doctorName}. Ketu shfaqen vetem terminet e tua.`}
           </p>
         </div>
         <div className="admin-actions">
@@ -171,11 +191,15 @@ export default function DoctorDashboard() {
             <h3>Terminet per kontroll</h3>
           </div>
           <div className="admin-filters">
-            <input
-              value={doctorFilter}
-              onChange={(event) => setDoctorFilter(event.target.value)}
-              placeholder="Filtro sipas emrit te mjekut"
-            />
+            {canViewAllAppointments ? (
+              <input
+                value={doctorFilter}
+                onChange={(event) => setDoctorFilter(event.target.value)}
+                placeholder="Filtro sipas emrit te mjekut"
+              />
+            ) : (
+              <input value={assignedDoctorName} disabled aria-label="Mjeku aktual" />
+            )}
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">Te gjitha statuset</option>
               {STATUS_OPTIONS.map((status) => (

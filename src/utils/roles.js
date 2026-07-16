@@ -33,3 +33,7 @@ export function isDoctorUser(user) {
 export function getDisplayName(user, fallback = "Perdorues") {
   return user?.user_metadata?.name || user?.email || fallback;
 }
+
+export function getDoctorName(user) {
+  return user?.user_metadata?.doctor_name || user?.user_metadata?.name || "";
+}
