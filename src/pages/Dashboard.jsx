@@ -453,13 +453,7 @@ export default function Dashboard() {
     () => doctorOptions.find((doctorOption) => doctorOption.name === doctor) || null,
     [doctor, doctorOptions]
   );
-  const timeOptions = useMemo(() => {
-    if (!time || availableTimes.includes(time)) {
-      return availableTimes;
-    }
-
-    return [time, ...availableTimes];
-  }, [availableTimes, time]);
+  const timeOptions = availableTimes;
 
   const refreshAppointments = async (currentUser = user, focusOnList = false) => {
     if (!currentUser?.id) return;
@@ -600,6 +594,10 @@ export default function Dashboard() {
 
       const freeTimes = scheduleTimes.filter((slot) => !bookedTimes.includes(slot));
       setAvailableTimes(freeTimes);
+
+      if (time && !freeTimes.includes(time)) {
+        setTime("");
+      }
     }
 
     loadAvailableTimes();
@@ -607,7 +605,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [doctor, date, doctorSchedules, editingAppointmentId, scheduleFallback]);
+  }, [doctor, date, doctorSchedules, editingAppointmentId, scheduleFallback, time]);
 
   const resetForm = () => {
     setDate("");
@@ -620,6 +618,7 @@ export default function Dashboard() {
   const handleDateChange = (e) => {
     const nextDate = e.target.value;
     setDate(nextDate);
+    setTime("");
 
     if (!nextDate || !doctor) {
       setAvailableTimes(ALL_TIMES);
@@ -629,6 +628,7 @@ export default function Dashboard() {
   const handleDoctorChange = (e) => {
     const nextDoctor = e.target.value;
     setDoctor(nextDoctor);
+    setTime("");
 
     if (!nextDoctor || !date) {
       setAvailableTimes(ALL_TIMES);
@@ -637,6 +637,7 @@ export default function Dashboard() {
 
   const chooseDoctorForBooking = (nextDoctor) => {
     setDoctor(nextDoctor);
+    setTime("");
 
     if (!nextDoctor || !date) {
       setAvailableTimes(ALL_TIMES);
@@ -654,6 +655,11 @@ export default function Dashboard() {
 
     if (!date || !time || !doctor) {
       setError("Ploteso te gjitha fushat!");
+      return;
+    }
+
+    if (!availableTimes.includes(time)) {
+      setError("Ky orar nuk eshte i lire ose mjeku nuk punon ne daten e zgjedhur.");
       return;
     }
 
