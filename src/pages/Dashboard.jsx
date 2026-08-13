@@ -87,6 +87,14 @@ function toKey(value) {
   return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") || "";
 }
 
+function normalizeDoctorName(value) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/\bdr\.?\s*/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
@@ -186,7 +194,7 @@ function buildScheduleTimes(schedule) {
   const slotMinutes = Number(schedule.slot_minutes);
   const slots = [];
 
-  for (let currentMinutes = startMinutes; currentMinutes <= endMinutes; currentMinutes += slotMinutes) {
+  for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += slotMinutes) {
     slots.push(minutesToTime(currentMinutes));
   }
 
@@ -199,6 +207,20 @@ function getDateDayKey(dateValue) {
   const selectedDate = new Date(`${dateValue}T00:00:00`);
 
   return WEEK_DAY_KEYS[selectedDate.getDay()];
+}
+
+function getScheduleTimesForDate({ doctorName, dateValue, schedules }) {
+  const selectedSchedule = schedules.find(
+    (schedule) => normalizeDoctorName(schedule.doctor_name) === normalizeDoctorName(doctorName)
+  );
+
+  if (!selectedSchedule) return [];
+
+  const selectedDayKey = getDateDayKey(dateValue);
+
+  if (!selectedSchedule.work_days?.includes(selectedDayKey)) return [];
+
+  return buildScheduleTimes(selectedSchedule);
 }
 
 function getAssistantReply({
@@ -378,7 +400,6 @@ export default function Dashboard() {
   const [appointments, setAppointments] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
   const [doctorSchedules, setDoctorSchedules] = useState([]);
-  const [scheduleFallback, setScheduleFallback] = useState(false);
   const [availableTimes, setAvailableTimes] = useState(ALL_TIMES);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -546,7 +567,9 @@ export default function Dashboard() {
 
       setDoctorsList(doctorsData || []);
       setDoctorSchedules(schedulesData || []);
-      setScheduleFallback(Boolean(schedulesError));
+      if (schedulesError) {
+        setDoctorSchedules([]);
+      }
       setLoading(false);
     }
 
@@ -563,16 +586,11 @@ export default function Dashboard() {
     let cancelled = false;
 
     async function loadAvailableTimes() {
-      const selectedSchedule = doctorSchedules.find(
-        (schedule) => schedule.doctor_name === doctor
-      );
-      const selectedDayKey = getDateDayKey(date);
-      const scheduleTimes =
-        selectedSchedule && selectedSchedule.work_days?.includes(selectedDayKey)
-          ? buildScheduleTimes(selectedSchedule)
-          : scheduleFallback || !doctorSchedules.length
-            ? ALL_TIMES
-            : [];
+      const scheduleTimes = getScheduleTimesForDate({
+        doctorName: doctor,
+        dateValue: date,
+        schedules: doctorSchedules,
+      });
 
       const { data, error: timesError } = await supabase
         .from("appointments")
@@ -605,7 +623,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [doctor, date, doctorSchedules, editingAppointmentId, scheduleFallback, time]);
+  }, [doctor, date, doctorSchedules, editingAppointmentId, time]);
 
   const resetForm = () => {
     setDate("");
@@ -655,6 +673,17 @@ export default function Dashboard() {
 
     if (!date || !time || !doctor) {
       setError("Ploteso te gjitha fushat!");
+      return;
+    }
+
+    const scheduleTimes = getScheduleTimesForDate({
+      doctorName: doctor,
+      dateValue: date,
+      schedules: doctorSchedules,
+    });
+
+    if (!scheduleTimes.includes(time)) {
+      setError("Ky mjek nuk punon ne kete dite ose ky orar nuk eshte pjese e orarit te tij.");
       return;
     }
 

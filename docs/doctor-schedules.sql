@@ -34,5 +34,6 @@ insert into public.doctor_schedules (doctor_name, work_days, start_time, end_tim
 values
   ('Dr. Elira Hoxha', array['mon', 'wed', 'fri'], '09:00', '17:00', 30),
   ('Dr. Blerim Dauti', array['tue', 'thu', 'sat'], '09:00', '15:00', 30),
-  ('Dr. Fjolla Krasniqi', array['mon', 'thu', 'fri'], '10:00', '16:00', 30)
+  ('Dr. Fjolla Krasniqi', array['mon', 'thu', 'fri'], '10:00', '16:00', 30),
+  ('Dr. Luan Shala', array['mon', 'tue', 'wed', 'thu'], '09:00', '16:00', 30)
 on conflict (doctor_name) do nothing;

@@ -64,6 +64,15 @@ async function fetchAppointmentsWithFallback(userId) {
   };
 }
 
+async function fetchDoctorSchedules() {
+  const { data, error } = await supabase
+    .from("doctor_schedules")
+    .select("*")
+    .order("doctor_name", { ascending: true });
+
+  return { data: data || [], error };
+}
+
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
@@ -189,7 +198,7 @@ export default function AdminDashboard() {
       await Promise.all([
         fetchAppointmentsWithFallback(user.id),
         supabase.from("doctors").select("*"),
-        supabase.from("doctor_schedules").select("*"),
+        fetchDoctorSchedules(),
       ]);
 
     setAppointments(appointmentsData || []);
@@ -228,8 +237,8 @@ export default function AdminDashboard() {
         await Promise.all([
           fetchAppointmentsWithFallback(user.id),
           supabase.from("doctors").select("*"),
-          supabase.from("doctor_schedules").select("*"),
-        ]);
+        fetchDoctorSchedules(),
+      ]);
 
       if (cancelled) return;
 
@@ -406,20 +415,27 @@ export default function AdminDashboard() {
       return;
     }
 
-    setDoctorSchedules((currentSchedules) => {
-      const existingSchedule = currentSchedules.some(
-        (schedule) => schedule.doctor_name === data.doctor_name
-      );
+    const { data: refreshedSchedules, error: refreshError } = await fetchDoctorSchedules();
 
-      if (existingSchedule) {
-        return currentSchedules.map((schedule) =>
-          schedule.doctor_name === data.doctor_name ? data : schedule
+    if (refreshError) {
+      setDoctorSchedules((currentSchedules) => {
+        const existingSchedule = currentSchedules.some(
+          (schedule) => schedule.doctor_name === data.doctor_name
         );
-      }
 
-      return [...currentSchedules, data];
-    });
-    setSuccess("Orari i mjekut u ruajt me sukses.");
+        if (existingSchedule) {
+          return currentSchedules.map((schedule) =>
+            schedule.doctor_name === data.doctor_name ? data : schedule
+          );
+        }
+
+        return [...currentSchedules, data];
+      });
+    } else {
+      setDoctorSchedules(refreshedSchedules);
+    }
+
+    setSuccess("Orari i mjekut u ruajt ne Supabase me sukses.");
     resetScheduleForm();
     setScheduleLoading(false);
   };
