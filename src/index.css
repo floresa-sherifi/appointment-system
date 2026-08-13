@@ -994,6 +994,76 @@ button:disabled {
   margin-top: 22px;
 }
 
+.admin-doctor-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 180px;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-doctor-form input,
+.admin-doctor-form button {
+  margin-top: 0;
+}
+
+.admin-schedule-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(240px, 1.6fr) repeat(3, minmax(130px, 0.7fr));
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.admin-schedule-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-schedule-form span {
+  color: #203150;
+  font-weight: 700;
+}
+
+.admin-schedule-form input,
+.admin-schedule-form select,
+.admin-schedule-form button {
+  margin-top: 0;
+}
+
+.schedule-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: end;
+}
+
+.admin-doctor-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-doctor-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f9fbff, #f7f2ff);
+  border: 1px solid rgba(150, 170, 216, 0.16);
+}
+
+.admin-doctor-item strong,
+.admin-doctor-item span {
+  display: block;
+}
+
+.admin-doctor-item span {
+  margin-top: 6px;
+  color: #667792;
+  font-size: 0.9rem;
+}
+
 .admin-table-heading {
   align-items: flex-start;
 }
@@ -1133,6 +1203,8 @@ button:disabled {
 
   .admin-stats,
   .admin-filters,
+  .admin-doctor-form,
+  .admin-schedule-form,
   .booking-doctor-grid,
   .booking-summary {
     grid-template-columns: 1fr;

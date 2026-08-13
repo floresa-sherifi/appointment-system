@@ -81,6 +81,7 @@ const STATUS_LABELS = {
 };
 
 const ALL_SPECIALTIES_FILTER = "Te gjithe";
+const WEEK_DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 function toKey(value) {
   return value?.toLowerCase().replace(/[^a-z0-9]+/g, "") || "";
@@ -161,6 +162,43 @@ function getReadableSupabaseError(error, fallbackMessage) {
   }
 
   return fallbackMessage;
+}
+
+function timeToMinutes(timeValue) {
+  const [hours, minutes] = (timeValue || "00:00").split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(minutesValue) {
+  const hours = Math.floor(minutesValue / 60).toString().padStart(2, "0");
+  const minutes = (minutesValue % 60).toString().padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
+
+function buildScheduleTimes(schedule) {
+  if (!schedule?.start_time || !schedule?.end_time || !schedule?.slot_minutes) {
+    return ALL_TIMES;
+  }
+
+  const startMinutes = timeToMinutes(schedule.start_time);
+  const endMinutes = timeToMinutes(schedule.end_time);
+  const slotMinutes = Number(schedule.slot_minutes);
+  const slots = [];
+
+  for (let currentMinutes = startMinutes; currentMinutes <= endMinutes; currentMinutes += slotMinutes) {
+    slots.push(minutesToTime(currentMinutes));
+  }
+
+  return slots.length ? slots : ALL_TIMES;
+}
+
+function getDateDayKey(dateValue) {
+  if (!dateValue) return "";
+
+  const selectedDate = new Date(`${dateValue}T00:00:00`);
+
+  return WEEK_DAY_KEYS[selectedDate.getDay()];
 }
 
 function getAssistantReply({
@@ -339,6 +377,8 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
+  const [doctorSchedules, setDoctorSchedules] = useState([]);
+  const [scheduleFallback, setScheduleFallback] = useState(false);
   const [availableTimes, setAvailableTimes] = useState(ALL_TIMES);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -501,12 +541,18 @@ export default function Dashboard() {
           supabase.from("doctors").select("*"),
         ]);
 
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from("doctor_schedules")
+        .select("*");
+
       if (cancelled) return;
 
       if (appointmentsError) setError("Gabim gjate marrjes se termineve!");
       else setAppointments(appointmentsData || []);
 
       setDoctorsList(doctorsData || []);
+      setDoctorSchedules(schedulesData || []);
+      setScheduleFallback(Boolean(schedulesError));
       setLoading(false);
     }
 
@@ -523,6 +569,17 @@ export default function Dashboard() {
     let cancelled = false;
 
     async function loadAvailableTimes() {
+      const selectedSchedule = doctorSchedules.find(
+        (schedule) => schedule.doctor_name === doctor
+      );
+      const selectedDayKey = getDateDayKey(date);
+      const scheduleTimes =
+        selectedSchedule && selectedSchedule.work_days?.includes(selectedDayKey)
+          ? buildScheduleTimes(selectedSchedule)
+          : scheduleFallback || !doctorSchedules.length
+            ? ALL_TIMES
+            : [];
+
       const { data, error: timesError } = await supabase
         .from("appointments")
         .select("id, time")
@@ -532,7 +589,7 @@ export default function Dashboard() {
       if (cancelled) return;
 
       if (timesError) {
-        setAvailableTimes(ALL_TIMES);
+        setAvailableTimes(scheduleTimes);
         return;
       }
 
@@ -541,8 +598,8 @@ export default function Dashboard() {
           ?.filter((appointment) => appointment.id !== editingAppointmentId)
           .map((appointment) => appointment.time) || [];
 
-      const freeTimes = ALL_TIMES.filter((slot) => !bookedTimes.includes(slot));
-      setAvailableTimes(freeTimes.length > 0 ? freeTimes : ALL_TIMES);
+      const freeTimes = scheduleTimes.filter((slot) => !bookedTimes.includes(slot));
+      setAvailableTimes(freeTimes);
     }
 
     loadAvailableTimes();
@@ -550,7 +607,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [doctor, date, editingAppointmentId]);
+  }, [doctor, date, doctorSchedules, editingAppointmentId, scheduleFallback]);
 
   const resetForm = () => {
     setDate("");
@@ -994,7 +1051,7 @@ export default function Dashboard() {
                   </div>
 
                   <div className="time-slot-grid">
-                    {ALL_TIMES.map((slot) => {
+                    {timeOptions.map((slot) => {
                       const isAvailable = timeOptions.includes(slot);
                       const isSelected = time === slot;
 
@@ -1011,6 +1068,11 @@ export default function Dashboard() {
                       );
                     })}
                   </div>
+                  {doctor && date && timeOptions.length === 0 && (
+                    <p className="empty-state">
+                      Nuk ka orare te lira per kete mjek ne daten e zgjedhur.
+                    </p>
+                  )}
                 </div>
 
                 <div className="booking-summary">
