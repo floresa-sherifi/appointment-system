@@ -6,20 +6,31 @@ import AdminDashboard from "./pages/AdminDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
+import { getDefaultRouteForUser } from "./utils/roles";
+
+function RoleRedirect() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <p className="page-loading">Loading...</p>;
+  if (!user) return <Navigate to="/login" replace />;
+
+  return <Navigate to={getDefaultRouteForUser(user)} replace />;
+}
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<RoleRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={["patient"]}>
                 <Dashboard />
               </ProtectedRoute>
             }
@@ -27,7 +38,7 @@ function App() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={["admin"]}>
                 <AdminDashboard />
               </ProtectedRoute>
             }
@@ -35,12 +46,12 @@ function App() {
           <Route
             path="/doctor"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={["doctor"]}>
                 <DoctorDashboard />
               </ProtectedRoute>
             }
           />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<RoleRedirect />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
