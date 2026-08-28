@@ -3,8 +3,14 @@ const DEFAULT_ADMIN_EMAILS = ["floresasherifi97@gmail.com"];
 function parseEmailList(value) {
   return (value || "")
     .split(",")
-    .map((email) => email.trim().toLowerCase())
+    .map((email) => email.trim().replace(/^["']|["']$/g, "").toLowerCase())
     .filter(Boolean);
+}
+
+function looksLikeDoctorProfile(user) {
+  const doctorName = user?.user_metadata?.doctor_name || user?.user_metadata?.name || "";
+
+  return /^dr\.?\s+/i.test(doctorName.trim());
 }
 
 export function getUserRole(user) {
@@ -17,7 +23,7 @@ export function getUserRole(user) {
   const doctorEmails = parseEmailList(import.meta.env.VITE_DOCTOR_EMAILS);
 
   if (metadataRole === "admin" || adminEmails.includes(email)) return "admin";
-  if (metadataRole === "doctor" || doctorEmails.includes(email)) return "doctor";
+  if (metadataRole === "doctor" || doctorEmails.includes(email) || looksLikeDoctorProfile(user)) return "doctor";
 
   return "patient";
 }
