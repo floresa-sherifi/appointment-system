@@ -13,6 +13,14 @@ create table if not exists public.doctor_schedules (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+as $$
+  select coalesce((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin', false);
+$$;
+
 alter table public.doctor_schedules enable row level security;
 
 drop policy if exists "Authenticated users can read doctor schedules" on public.doctor_schedules;
@@ -23,12 +31,13 @@ to authenticated
 using (true);
 
 drop policy if exists "Authenticated users can manage doctor schedules" on public.doctor_schedules;
-create policy "Authenticated users can manage doctor schedules"
+drop policy if exists "Admins can manage doctor schedules" on public.doctor_schedules;
+create policy "Admins can manage doctor schedules"
 on public.doctor_schedules
 for all
 to authenticated
-using (true)
-with check (true);
+using (public.is_admin())
+with check (public.is_admin());
 
 insert into public.doctor_schedules (doctor_name, work_days, start_time, end_time, slot_minutes)
 values

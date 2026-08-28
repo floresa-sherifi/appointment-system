@@ -633,7 +633,18 @@ button:disabled {
 }
 
 .advanced-list {
+  display: grid;
   gap: 14px;
+}
+
+.appointment-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.appointment-group-title {
+  margin: 0 0 12px;
+  color: #203150;
 }
 
 .advanced-card {
@@ -663,6 +674,17 @@ button:disabled {
 
 .appointment-card h4 {
   margin: 8px 0;
+}
+
+.history-card {
+  opacity: 0.86;
+}
+
+.visit-notes-preview {
+  margin: 12px 0 0;
+  color: #52698f;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .appointment-tag {
@@ -1115,6 +1137,22 @@ button:disabled {
   font-weight: 800;
 }
 
+.visit-notes-cell {
+  display: grid;
+  gap: 10px;
+  min-width: 280px;
+}
+
+.visit-notes-cell textarea {
+  min-height: 86px;
+  margin-top: 0;
+}
+
+.visit-notes-cell button {
+  justify-self: start;
+  margin-top: 0;
+}
+
 @media (max-width: 1100px) {
   .app-shell,
   .content-grid,
@@ -1189,6 +1227,10 @@ button:disabled {
   .card-actions {
     width: 100%;
     flex-direction: column;
+  }
+
+  .visit-notes-cell button {
+    justify-self: stretch;
   }
 
   .chat-input button,

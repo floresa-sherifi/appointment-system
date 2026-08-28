@@ -99,6 +99,16 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
+function getAppointmentDateTime(appointment) {
+  return new Date(`${appointment.date}T${appointment.time || "00:00"}:00`);
+}
+
+function isPastAppointment(appointment) {
+  const status = getAppointmentStatus(appointment);
+
+  return status === "cancelled" || status === "completed" || getAppointmentDateTime(appointment) < new Date();
+}
+
 async function sendAppointmentEmailNotification(type, appointment, user) {
   if (!appointment || !user?.email) return;
 
@@ -234,7 +244,7 @@ function getAssistantReply({
   offline,
 }) {
   const normalized = question.toLowerCase().trim();
-  const upcomingAppointment = appointments[0];
+  const upcomingAppointment = appointments.find((appointment) => !isPastAppointment(appointment));
 
   if (!normalized) {
     return "Shkruaj nje pyetje dhe une do mundohem te te ndihmoj.";
@@ -441,7 +451,15 @@ export default function Dashboard() {
     );
   }, [doctorCards, doctorSearch]);
 
-  const upcomingAppointment = appointments[0] || null;
+  const upcomingAppointments = useMemo(
+    () => appointments.filter((appointment) => !isPastAppointment(appointment)),
+    [appointments]
+  );
+  const appointmentHistory = useMemo(
+    () => appointments.filter((appointment) => isPastAppointment(appointment)),
+    [appointments]
+  );
+  const upcomingAppointment = upcomingAppointments[0] || null;
   const appointmentCount = appointments.length;
   const canAccessAdmin = isAdminUser(user);
   const canAccessDoctorPanel = isDoctorUser(user) || canAccessAdmin;
@@ -1170,43 +1188,78 @@ export default function Dashboard() {
               ) : appointments.length === 0 ? (
                 <p className="empty-state">Nuk ke termine ende.</p>
               ) : (
-                <div className="appointments-list advanced-list">
-                  {appointments.map((appointment) => (
-                    <article
-                      key={appointment.id}
-                      className={
-                        appointment.id === highlightedAppointmentId
-                          ? "appointment-card advanced-card appointment-card--highlight"
-                          : "appointment-card advanced-card"
-                      }
-                    >
-                      <div>
-                        <p className="appointment-time">
-                          {appointment.date} ne {appointment.time}
-                        </p>
-                        <h4>{appointment.doctor}</h4>
-                        <span className={`appointment-tag status-${getAppointmentStatus(appointment)}`}>
-                          {STATUS_LABELS[getAppointmentStatus(appointment)] || "Ne pritje"}
-                        </span>
+                <div className="appointment-groups">
+                  <div>
+                    <h4 className="appointment-group-title">Terminet e ardhshme</h4>
+                    {upcomingAppointments.length === 0 ? (
+                      <p className="empty-state">Nuk ke termine aktive per momentin.</p>
+                    ) : (
+                      <div className="appointments-list advanced-list">
+                        {upcomingAppointments.map((appointment) => (
+                          <article
+                            key={appointment.id}
+                            className={
+                              appointment.id === highlightedAppointmentId
+                                ? "appointment-card advanced-card appointment-card--highlight"
+                                : "appointment-card advanced-card"
+                            }
+                          >
+                            <div>
+                              <p className="appointment-time">
+                                {appointment.date} ne {appointment.time}
+                              </p>
+                              <h4>{appointment.doctor}</h4>
+                              <span className={`appointment-tag status-${getAppointmentStatus(appointment)}`}>
+                                {STATUS_LABELS[getAppointmentStatus(appointment)] || "Ne pritje"}
+                              </span>
+                            </div>
+                            <div className="card-actions">
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => startEditingAppointment(appointment)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="delete-btn"
+                                onClick={() => deleteAppointment(appointment.id)}
+                              >
+                                Fshi
+                              </button>
+                            </div>
+                          </article>
+                        ))}
                       </div>
-                      <div className="card-actions">
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={() => startEditingAppointment(appointment)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="delete-btn"
-                          onClick={() => deleteAppointment(appointment.id)}
-                        >
-                          Fshi
-                        </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="appointment-group-title">Historiku i termineve</h4>
+                    {appointmentHistory.length === 0 ? (
+                      <p className="empty-state">Historiku eshte bosh.</p>
+                    ) : (
+                      <div className="appointments-list advanced-list">
+                        {appointmentHistory.map((appointment) => (
+                          <article key={appointment.id} className="appointment-card advanced-card history-card">
+                            <div>
+                              <p className="appointment-time">
+                                {appointment.date} ne {appointment.time}
+                              </p>
+                              <h4>{appointment.doctor}</h4>
+                              <span className={`appointment-tag status-${getAppointmentStatus(appointment)}`}>
+                                {STATUS_LABELS[getAppointmentStatus(appointment)] || "Ne pritje"}
+                              </span>
+                              {appointment.visit_notes && (
+                                <p className="visit-notes-preview">{appointment.visit_notes}</p>
+                              )}
+                            </div>
+                          </article>
+                        ))}
                       </div>
-                    </article>
-                  ))}
+                    )}
+                  </div>
                 </div>
               )}
             </section>

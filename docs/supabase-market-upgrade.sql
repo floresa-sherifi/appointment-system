@@ -5,6 +5,9 @@ alter table public.appointments
 add column if not exists status text not null default 'pending'
 check (status in ('pending', 'confirmed', 'cancelled', 'completed'));
 
+alter table public.appointments
+add column if not exists visit_notes text not null default '';
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -13,13 +16,32 @@ as $$
   select coalesce((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin', false);
 $$;
 
+create or replace function public.is_doctor_for_appointment(appointment_doctor text)
+returns boolean
+language sql
+stable
+as $$
+  select
+    coalesce((auth.jwt() -> 'user_metadata' ->> 'role') = 'doctor', false)
+    and lower(regexp_replace(coalesce(appointment_doctor, ''), '\s+', ' ', 'g')) =
+      lower(regexp_replace(coalesce(
+        auth.jwt() -> 'user_metadata' ->> 'doctor_name',
+        auth.jwt() -> 'user_metadata' ->> 'name',
+        ''
+      ), '\s+', ' ', 'g'));
+$$;
+
 alter table public.appointments enable row level security;
 
 drop policy if exists "Patients can read own appointments" on public.appointments;
 create policy "Patients can read own appointments"
 on public.appointments
 for select
-using (auth.uid() = user_id or public.is_admin());
+using (
+  auth.uid() = user_id
+  or public.is_admin()
+  or public.is_doctor_for_appointment(doctor)
+);
 
 drop policy if exists "Patients can create own appointments" on public.appointments;
 create policy "Patients can create own appointments"
@@ -31,8 +53,16 @@ drop policy if exists "Patients can update own appointments" on public.appointme
 create policy "Patients can update own appointments"
 on public.appointments
 for update
-using (auth.uid() = user_id or public.is_admin())
-with check (auth.uid() = user_id or public.is_admin());
+using (
+  auth.uid() = user_id
+  or public.is_admin()
+  or public.is_doctor_for_appointment(doctor)
+)
+with check (
+  auth.uid() = user_id
+  or public.is_admin()
+  or public.is_doctor_for_appointment(doctor)
+);
 
 drop policy if exists "Patients can delete own appointments" on public.appointments;
 create policy "Patients can delete own appointments"

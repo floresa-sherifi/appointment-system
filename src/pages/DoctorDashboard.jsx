@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/useAuth";
@@ -28,6 +28,7 @@ function normalizeDoctorName(value) {
 export default function DoctorDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
+  const [visitNotesDrafts, setVisitNotesDrafts] = useState({});
   const [doctorFilter, setDoctorFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
@@ -75,7 +76,7 @@ export default function DoctorDashboard() {
     [visibleAppointments]
   );
 
-  const loadDoctorAppointments = async () => {
+  const loadDoctorAppointments = useCallback(async () => {
     if (!canAccessDoctorPanel) return;
 
     setLoading(true);
@@ -108,15 +109,29 @@ export default function DoctorDashboard() {
       );
       setAppointments([]);
     } else {
-      setAppointments(data || []);
+      const nextAppointments = data || [];
+      setAppointments(nextAppointments);
+      setVisitNotesDrafts(
+        nextAppointments.reduce(
+          (drafts, appointment) => ({
+            ...drafts,
+            [appointment.id]: appointment.visit_notes || "",
+          }),
+          {}
+        )
+      );
     }
 
     setLoading(false);
-  };
+  }, [assignedDoctorName, canAccessDoctorPanel, canViewAllAppointments]);
 
   useEffect(() => {
-    loadDoctorAppointments();
-  }, [canAccessDoctorPanel, canViewAllAppointments, assignedDoctorName]);
+    const loadTimer = window.setTimeout(() => {
+      loadDoctorAppointments();
+    }, 0);
+
+    return () => window.clearTimeout(loadTimer);
+  }, [loadDoctorAppointments]);
 
   const updateAppointmentStatus = async (appointmentId, nextStatus) => {
     setError("");
@@ -138,6 +153,29 @@ export default function DoctorDashboard() {
       )
     );
     setSuccess("Statusi i terminit u perditesua.");
+  };
+
+  const updateVisitNotes = async (appointmentId) => {
+    setError("");
+    setSuccess("");
+
+    const nextNotes = (visitNotesDrafts[appointmentId] || "").trim();
+    const { error: notesError } = await supabase
+      .from("appointments")
+      .update({ visit_notes: nextNotes })
+      .eq("id", appointmentId);
+
+    if (notesError) {
+      setError("Shenimet nuk u ruajten. Sigurohu qe kolona visit_notes dhe RLS per mjekun jane aktive.");
+      return;
+    }
+
+    setAppointments((currentAppointments) =>
+      currentAppointments.map((appointment) =>
+        appointment.id === appointmentId ? { ...appointment, visit_notes: nextNotes } : appointment
+      )
+    );
+    setSuccess("Shenimet pas vizites u ruajten.");
   };
 
   if (authLoading) return <p className="page-loading">Loading...</p>;
@@ -251,6 +289,7 @@ export default function DoctorDashboard() {
                   <th>Mjeku</th>
                   <th>Pacienti</th>
                   <th>Statusi</th>
+                  <th>Shenime pas vizites</th>
                 </tr>
               </thead>
               <tbody>
@@ -272,6 +311,28 @@ export default function DoctorDashboard() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td>
+                      <div className="visit-notes-cell">
+                        <textarea
+                          value={visitNotesDrafts[appointment.id] || ""}
+                          onChange={(event) =>
+                            setVisitNotesDrafts((currentDrafts) => ({
+                              ...currentDrafts,
+                              [appointment.id]: event.target.value,
+                            }))
+                          }
+                          placeholder="Diagnoze, terapi ose koment i shkurter..."
+                          rows={3}
+                        />
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => updateVisitNotes(appointment.id)}
+                        >
+                          Ruaj shenimet
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
