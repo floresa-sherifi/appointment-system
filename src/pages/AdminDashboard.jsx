@@ -657,7 +657,11 @@ export default function AdminDashboard() {
             </button>
             <div className="organization-list">
               {sortedClinics.map((clinic) => (
-                <span key={clinic.id || clinic.name}>{clinic.name}</span>
+                <span key={clinic.id || clinic.name}>
+                  {clinic.name}
+                  {clinic.city ? ` / ${clinic.city}` : ""}
+                  {clinic.country ? `, ${clinic.country}` : ""}
+                </span>
               ))}
               {sortedClinics.length === 0 && <p className="empty-state">Nuk ka klinika ende.</p>}
             </div>
