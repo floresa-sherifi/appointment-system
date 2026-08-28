@@ -115,6 +115,19 @@ to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
+with mitrovica_clinics(name, city, country) as (
+  values
+  ('Spitali i Pergjithshem Mitrovice', 'Mitrovice', 'Kosove'),
+  ('QKMF Mitrovice', 'Mitrovice', 'Kosove'),
+  ('Klinika Family Care Mitrovice', 'Mitrovice', 'Kosove'),
+  ('Poliklinika HealthPlus Mitrovice', 'Mitrovice', 'Kosove'),
+  ('Klinika Pediatrike Mitrovice', 'Mitrovice', 'Kosove'),
+  ('Klinika Dermatologjike Mitrovice', 'Mitrovice', 'Kosove'),
+  ('Ordinanca Kardiologjike Mitrovice', 'Mitrovice', 'Kosove')
+)
+delete from public.clinics
+where name not in (select name from mitrovica_clinics);
+
 insert into public.clinics (name, city, country)
 values
   ('Spitali i Pergjithshem Mitrovice', 'Mitrovice', 'Kosove'),
@@ -124,7 +137,10 @@ values
   ('Klinika Pediatrike Mitrovice', 'Mitrovice', 'Kosove'),
   ('Klinika Dermatologjike Mitrovice', 'Mitrovice', 'Kosove'),
   ('Ordinanca Kardiologjike Mitrovice', 'Mitrovice', 'Kosove')
-on conflict (name) do nothing;
+on conflict (name) do update
+set
+  city = excluded.city,
+  country = excluded.country;
 
 insert into public.departments (name)
 values
