@@ -595,6 +595,9 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="admin-actions">
+          <Link className="text-link-button" to="/dashboard">
+            Pacient view
+          </Link>
           <button type="button" className="ghost-button" onClick={loadAdminData}>
             Rifresko
           </button>

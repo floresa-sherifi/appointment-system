@@ -32,15 +32,6 @@ export function getUserRole(user) {
   return "patient";
 }
 
-export function getDefaultRouteForUser(user) {
-  const role = getUserRole(user);
-
-  if (role === "admin") return "/admin";
-  if (role === "doctor") return "/doctor";
-
-  return "/dashboard";
-}
-
 export function isAdminUser(user) {
   return getUserRole(user) === "admin";
 }

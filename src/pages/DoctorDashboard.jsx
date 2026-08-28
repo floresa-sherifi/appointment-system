@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/useAuth";
 import { getDisplayName, getDoctorName, isAdminUser, isDoctorUser } from "../utils/roles";
@@ -189,6 +190,9 @@ export default function DoctorDashboard() {
             Ky panel eshte vetem per mjeke ose admin. Per testim, shto email-in e mjekut te
             `VITE_DOCTOR_EMAILS` ose vendos `role: doctor` ne metadata.
           </p>
+          <Link className="text-link-button" to="/dashboard">
+            Kthehu te dashboard
+          </Link>
         </section>
       </main>
     );
@@ -207,6 +211,14 @@ export default function DoctorDashboard() {
           </p>
         </div>
         <div className="admin-actions">
+          <Link className="text-link-button" to="/dashboard">
+            Pacient view
+          </Link>
+          {isAdminUser(user) && (
+            <Link className="text-link-button" to="/admin">
+              Admin Dashboard
+            </Link>
+          )}
           <button type="button" className="ghost-button" onClick={loadDoctorAppointments}>
             Rifresko
           </button>

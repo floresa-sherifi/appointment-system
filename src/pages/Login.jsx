@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
-import { getDefaultRouteForUser } from "../utils/roles";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -34,12 +33,12 @@ export default function Login() {
         );
       });
 
-      const { data, error } = await Promise.race([loginRequest, timeout]);
+      const { error } = await Promise.race([loginRequest, timeout]);
 
       if (error) {
         setError(error.message);
       } else {
-        navigate(getDefaultRouteForUser(data.user), { replace: true });
+        navigate("/dashboard");
       }
     } catch (loginError) {
       setError(loginError.message || "Login nuk funksionoi. Provo perseri.");
