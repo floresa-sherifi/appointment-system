@@ -1,4 +1,5 @@
 const DEFAULT_ADMIN_EMAILS = ["floresasherifi97@gmail.com"];
+const DEFAULT_DOCTOR_EMAILS = ["floresa.sherifi@umib.net"];
 
 function parseEmailList(value) {
   return (value || "")
@@ -10,7 +11,7 @@ function parseEmailList(value) {
 function looksLikeDoctorProfile(user) {
   const doctorName = user?.user_metadata?.doctor_name || user?.user_metadata?.name || "";
 
-  return /^dr\.?\s+/i.test(doctorName.trim());
+  return /^dr\.?\s*\S+/i.test(doctorName.trim());
 }
 
 export function getUserRole(user) {
@@ -20,7 +21,10 @@ export function getUserRole(user) {
     ...DEFAULT_ADMIN_EMAILS,
     ...parseEmailList(import.meta.env.VITE_ADMIN_EMAILS),
   ];
-  const doctorEmails = parseEmailList(import.meta.env.VITE_DOCTOR_EMAILS);
+  const doctorEmails = [
+    ...DEFAULT_DOCTOR_EMAILS,
+    ...parseEmailList(import.meta.env.VITE_DOCTOR_EMAILS),
+  ];
 
   if (metadataRole === "admin" || adminEmails.includes(email)) return "admin";
   if (metadataRole === "doctor" || doctorEmails.includes(email) || looksLikeDoctorProfile(user)) return "doctor";
