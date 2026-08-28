@@ -463,6 +463,11 @@ export default function Dashboard() {
   const appointmentCount = appointments.length;
   const canAccessAdmin = isAdminUser(user);
   const canAccessDoctorPanel = isDoctorUser(user) || canAccessAdmin;
+  const portalLabel = canAccessAdmin
+    ? "Portal administratori"
+    : canAccessDoctorPanel
+      ? "Portal mjeku"
+      : "Portal pacienti";
   const doctorOptions = useMemo(() => {
     if (!doctor || doctorCards.some((doctorOption) => doctorOption.name === doctor)) {
       return doctorCards;
@@ -965,7 +970,7 @@ export default function Dashboard() {
       <main className="main-panel">
         <section className="top-banner">
           <div>
-            <p className="section-eyebrow">Portal pacienti</p>
+            <p className="section-eyebrow">{portalLabel}</p>
             <h2>Miresevjen, {user.user_metadata?.name || "pacient"}.</h2>
             <p className="section-copy">
               Menaxho terminet, eksploro mjeket dhe mbaj profilin tend te perditesuar.
