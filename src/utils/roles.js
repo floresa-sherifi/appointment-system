@@ -1,5 +1,8 @@
 const DEFAULT_ADMIN_EMAILS = ["floresasherifi97@gmail.com"];
 const DEFAULT_DOCTOR_EMAILS = ["floresa.sherifi@umib.net"];
+const DEFAULT_DOCTOR_ASSIGNMENTS = {
+  "floresa.sherifi@umib.net": "Dr. Elira Hoxha",
+};
 
 function parseEmailList(value) {
   return (value || "")
@@ -45,5 +48,7 @@ export function getDisplayName(user, fallback = "Perdorues") {
 }
 
 export function getDoctorName(user) {
-  return user?.user_metadata?.doctor_name || user?.user_metadata?.name || "";
+  const email = user?.email?.toLowerCase();
+
+  return DEFAULT_DOCTOR_ASSIGNMENTS[email] || user?.user_metadata?.doctor_name || user?.user_metadata?.name || "";
 }

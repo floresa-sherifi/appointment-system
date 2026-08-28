@@ -91,15 +91,11 @@ export default function DoctorDashboard() {
       return;
     }
 
-    let query = supabase
+    const query = supabase
       .from("appointments")
       .select("*")
       .order("date", { ascending: true })
       .order("time", { ascending: true });
-
-    if (!canViewAllAppointments) {
-      query = query.eq("doctor", assignedDoctorName);
-    }
 
     const { data, error: appointmentsError } = await query;
 
@@ -109,7 +105,12 @@ export default function DoctorDashboard() {
       );
       setAppointments([]);
     } else {
-      const nextAppointments = data || [];
+      const nextAppointments = canViewAllAppointments
+        ? data || []
+        : (data || []).filter(
+            (appointment) =>
+              normalizeDoctorName(appointment.doctor) === normalizeDoctorName(assignedDoctorName)
+          );
       setAppointments(nextAppointments);
       setVisitNotesDrafts(
         nextAppointments.reduce(
