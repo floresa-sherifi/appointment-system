@@ -802,7 +802,8 @@ button:disabled {
   margin-bottom: 18px;
 }
 
-.doctor-toolbar input {
+.doctor-toolbar input,
+.doctor-toolbar select {
   margin-top: 0;
 }
 
@@ -880,6 +881,12 @@ button:disabled {
 .doctor-specialty {
   margin: 8px 0;
   color: #294f92;
+  font-weight: 700;
+}
+
+.doctor-department {
+  margin: -2px 0 8px;
+  color: #60708f;
   font-weight: 700;
 }
 
@@ -1007,7 +1014,7 @@ button:disabled {
 
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin-top: 22px;
 }
@@ -1018,14 +1025,62 @@ button:disabled {
 
 .admin-doctor-form {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 180px;
+  grid-template-columns: repeat(3, minmax(190px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
 
 .admin-doctor-form input,
+.admin-doctor-form select,
 .admin-doctor-form button {
   margin-top: 0;
+}
+
+.organization-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.organization-form {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #fbfdff;
+  border: 1px solid rgba(150, 170, 216, 0.16);
+}
+
+.organization-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.organization-form span {
+  color: #203150;
+  font-weight: 700;
+}
+
+.organization-form input,
+.organization-form button {
+  margin-top: 0;
+}
+
+.organization-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.organization-list span {
+  display: inline-flex;
+  width: auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(38, 83, 209, 0.08);
+  color: #2653d1;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .admin-schedule-form {
@@ -1158,6 +1213,7 @@ button:disabled {
   .content-grid,
   .profile-layout,
   .doctor-grid,
+  .organization-grid,
   .top-banner {
     grid-template-columns: 1fr;
   }

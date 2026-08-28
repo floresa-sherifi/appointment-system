@@ -73,13 +73,33 @@ async function fetchDoctorSchedules() {
   return { data: data || [], error };
 }
 
+async function fetchNamedResource(tableName) {
+  const { data, error } = await supabase
+    .from(tableName)
+    .select("*")
+    .order("name", { ascending: true });
+
+  return { data: data || [], error };
+}
+
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
+  const [clinics, setClinics] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [specialties, setSpecialties] = useState([]);
   const [doctorSchedules, setDoctorSchedules] = useState([]);
   const [doctorName, setDoctorName] = useState("");
+  const [doctorClinic, setDoctorClinic] = useState("");
+  const [doctorDepartment, setDoctorDepartment] = useState("");
+  const [doctorSpecialty, setDoctorSpecialty] = useState("");
+  const [doctorLocation, setDoctorLocation] = useState("");
+  const [doctorFee, setDoctorFee] = useState("");
   const [editingDoctorId, setEditingDoctorId] = useState(null);
+  const [clinicName, setClinicName] = useState("");
+  const [departmentName, setDepartmentName] = useState("");
+  const [specialtyName, setSpecialtyName] = useState("");
   const [scheduleDoctorName, setScheduleDoctorName] = useState("");
   const [scheduleWorkDays, setScheduleWorkDays] = useState(["mon", "tue", "wed", "thu", "fri"]);
   const [scheduleStartTime, setScheduleStartTime] = useState("09:00");
@@ -89,6 +109,7 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [doctorLoading, setDoctorLoading] = useState(false);
+  const [organizationLoading, setOrganizationLoading] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -134,6 +155,21 @@ export default function AdminDashboard() {
     [doctors]
   );
 
+  const sortedClinics = useMemo(
+    () => [...clinics].sort((firstItem, secondItem) => (firstItem.name || "").localeCompare(secondItem.name || "")),
+    [clinics]
+  );
+
+  const sortedDepartments = useMemo(
+    () => [...departments].sort((firstItem, secondItem) => (firstItem.name || "").localeCompare(secondItem.name || "")),
+    [departments]
+  );
+
+  const sortedSpecialties = useMemo(
+    () => [...specialties].sort((firstItem, secondItem) => (firstItem.name || "").localeCompare(secondItem.name || "")),
+    [specialties]
+  );
+
   const sortedSchedules = useMemo(
     () =>
       [...doctorSchedules].sort((firstSchedule, secondSchedule) =>
@@ -144,6 +180,11 @@ export default function AdminDashboard() {
 
   const resetDoctorForm = () => {
     setDoctorName("");
+    setDoctorClinic("");
+    setDoctorDepartment("");
+    setDoctorSpecialty("");
+    setDoctorLocation("");
+    setDoctorFee("");
     setEditingDoctorId(null);
   };
 
@@ -194,16 +235,25 @@ export default function AdminDashboard() {
       { data: appointmentsData, limited, error: appointmentsError },
       { data: doctorsData },
       { data: schedulesData, error: schedulesError },
+      { data: clinicsData },
+      { data: departmentsData },
+      { data: specialtiesData },
     ] =
       await Promise.all([
         fetchAppointmentsWithFallback(user.id),
         supabase.from("doctors").select("*"),
         fetchDoctorSchedules(),
+        fetchNamedResource("clinics"),
+        fetchNamedResource("departments"),
+        fetchNamedResource("specialties"),
       ]);
 
     setAppointments(appointmentsData || []);
     setDoctors(doctorsData || []);
     setDoctorSchedules(schedulesData || []);
+    setClinics(clinicsData || []);
+    setDepartments(departmentsData || []);
+    setSpecialties(specialtiesData || []);
     setLimitedMode(limited);
     setScheduleWarning(
       schedulesError
@@ -233,11 +283,17 @@ export default function AdminDashboard() {
         { data: appointmentsData, limited, error: appointmentsError },
         { data: doctorsData },
         { data: schedulesData, error: schedulesError },
+        { data: clinicsData },
+        { data: departmentsData },
+        { data: specialtiesData },
       ] =
         await Promise.all([
           fetchAppointmentsWithFallback(user.id),
           supabase.from("doctors").select("*"),
-        fetchDoctorSchedules(),
+          fetchDoctorSchedules(),
+          fetchNamedResource("clinics"),
+          fetchNamedResource("departments"),
+          fetchNamedResource("specialties"),
       ]);
 
       if (cancelled) return;
@@ -245,6 +301,9 @@ export default function AdminDashboard() {
       setAppointments(appointmentsData || []);
       setDoctors(doctorsData || []);
       setDoctorSchedules(schedulesData || []);
+      setClinics(clinicsData || []);
+      setDepartments(departmentsData || []);
+      setSpecialties(specialtiesData || []);
       setLimitedMode(limited);
       setScheduleWarning(
         schedulesError
@@ -316,8 +375,33 @@ export default function AdminDashboard() {
     setSuccess("");
 
     const saveDoctor = editingDoctorId
-      ? supabase.from("doctors").update({ name: normalizedName }).eq("id", editingDoctorId).select("*").single()
-      : supabase.from("doctors").insert([{ name: normalizedName }]).select("*").single();
+      ? supabase
+          .from("doctors")
+          .update({
+            name: normalizedName,
+            clinic: doctorClinic,
+            department: doctorDepartment,
+            specialty: doctorSpecialty,
+            location: doctorLocation.trim(),
+            fee: doctorFee.trim(),
+          })
+          .eq("id", editingDoctorId)
+          .select("*")
+          .single()
+      : supabase
+          .from("doctors")
+          .insert([
+            {
+              name: normalizedName,
+              clinic: doctorClinic,
+              department: doctorDepartment,
+              specialty: doctorSpecialty,
+              location: doctorLocation.trim(),
+              fee: doctorFee.trim(),
+            },
+          ])
+          .select("*")
+          .single();
 
     const { data, error: doctorError } = await saveDoctor;
 
@@ -344,6 +428,11 @@ export default function AdminDashboard() {
   const startEditingDoctor = (doctor) => {
     setEditingDoctorId(doctor.id);
     setDoctorName(doctor.name || "");
+    setDoctorClinic(doctor.clinic || "");
+    setDoctorDepartment(doctor.department || "");
+    setDoctorSpecialty(doctor.specialty || "");
+    setDoctorLocation(doctor.location || "");
+    setDoctorFee(doctor.fee || "");
   };
 
   const deleteDoctor = async (doctorId) => {
@@ -363,6 +452,39 @@ export default function AdminDashboard() {
     if (editingDoctorId === doctorId) resetDoctorForm();
     setSuccess("Mjeku u fshi me sukses.");
     setDoctorLoading(false);
+  };
+
+  const addNamedResource = async (tableName, resourceName, resetResourceName, label) => {
+    const normalizedName = resourceName.trim();
+
+    if (!normalizedName) {
+      setError(`Shkruaj emrin per ${label}.`);
+      return;
+    }
+
+    setOrganizationLoading(true);
+    setError("");
+    setSuccess("");
+
+    const { data, error: resourceError } = await supabase
+      .from(tableName)
+      .insert([{ name: normalizedName }])
+      .select("*")
+      .single();
+
+    if (resourceError) {
+      setError(`${label} nuk u ruajt. Ekzekuto docs/clinic-organization.sql dhe kontrollo RLS.`);
+      setOrganizationLoading(false);
+      return;
+    }
+
+    if (tableName === "clinics") setClinics((currentItems) => [...currentItems, data]);
+    if (tableName === "departments") setDepartments((currentItems) => [...currentItems, data]);
+    if (tableName === "specialties") setSpecialties((currentItems) => [...currentItems, data]);
+
+    resetResourceName("");
+    setSuccess(`${label} u shtua me sukses.`);
+    setOrganizationLoading(false);
   };
 
   const startEditingSchedule = (schedule) => {
@@ -500,6 +622,99 @@ export default function AdminDashboard() {
           <span>Mjeke</span>
           <strong>{doctors.length}</strong>
         </div>
+        <div className="mini-stat">
+          <span>Klinika</span>
+          <strong>{clinics.length}</strong>
+        </div>
+      </section>
+
+      <section className="panel admin-table-panel">
+        <div className="panel-heading admin-table-heading">
+          <div>
+            <p className="section-eyebrow">Organization</p>
+            <h3>Klinika, departamente dhe specialitete</h3>
+          </div>
+        </div>
+
+        <div className="organization-grid">
+          <form
+            className="organization-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addNamedResource("clinics", clinicName, setClinicName, "Klinika");
+            }}
+          >
+            <label>
+              <span>Klinika ose spitali</span>
+              <input
+                value={clinicName}
+                onChange={(event) => setClinicName(event.target.value)}
+                placeholder="p.sh. Qendra HealthPlus"
+              />
+            </label>
+            <button type="submit" disabled={organizationLoading}>
+              Shto klinike
+            </button>
+            <div className="organization-list">
+              {sortedClinics.map((clinic) => (
+                <span key={clinic.id || clinic.name}>{clinic.name}</span>
+              ))}
+              {sortedClinics.length === 0 && <p className="empty-state">Nuk ka klinika ende.</p>}
+            </div>
+          </form>
+
+          <form
+            className="organization-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addNamedResource("departments", departmentName, setDepartmentName, "Departamenti");
+            }}
+          >
+            <label>
+              <span>Departamenti</span>
+              <input
+                value={departmentName}
+                onChange={(event) => setDepartmentName(event.target.value)}
+                placeholder="p.sh. Kardiologji"
+              />
+            </label>
+            <button type="submit" disabled={organizationLoading}>
+              Shto departament
+            </button>
+            <div className="organization-list">
+              {sortedDepartments.map((department) => (
+                <span key={department.id || department.name}>{department.name}</span>
+              ))}
+              {sortedDepartments.length === 0 && <p className="empty-state">Nuk ka departamente ende.</p>}
+            </div>
+          </form>
+
+          <form
+            className="organization-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addNamedResource("specialties", specialtyName, setSpecialtyName, "Specialiteti");
+            }}
+          >
+            <label>
+              <span>Specialiteti</span>
+              <input
+                value={specialtyName}
+                onChange={(event) => setSpecialtyName(event.target.value)}
+                placeholder="p.sh. Pediater"
+              />
+            </label>
+            <button type="submit" disabled={organizationLoading}>
+              Shto specialitet
+            </button>
+            <div className="organization-list">
+              {sortedSpecialties.map((specialty) => (
+                <span key={specialty.id || specialty.name}>{specialty.name}</span>
+              ))}
+              {sortedSpecialties.length === 0 && <p className="empty-state">Nuk ka specialitete ende.</p>}
+            </div>
+          </form>
+        </div>
       </section>
 
       <section className="panel admin-table-panel">
@@ -521,6 +736,40 @@ export default function AdminDashboard() {
             onChange={(event) => setDoctorName(event.target.value)}
             placeholder="Emri i mjekut, p.sh. Dr. Elira Hoxha"
           />
+          <select value={doctorClinic} onChange={(event) => setDoctorClinic(event.target.value)}>
+            <option value="">Zgjidh kliniken</option>
+            {sortedClinics.map((clinic) => (
+              <option key={clinic.id || clinic.name} value={clinic.name}>
+                {clinic.name}
+              </option>
+            ))}
+          </select>
+          <select value={doctorDepartment} onChange={(event) => setDoctorDepartment(event.target.value)}>
+            <option value="">Zgjidh departamentin</option>
+            {sortedDepartments.map((department) => (
+              <option key={department.id || department.name} value={department.name}>
+                {department.name}
+              </option>
+            ))}
+          </select>
+          <select value={doctorSpecialty} onChange={(event) => setDoctorSpecialty(event.target.value)}>
+            <option value="">Zgjidh specialitetin</option>
+            {sortedSpecialties.map((specialty) => (
+              <option key={specialty.id || specialty.name} value={specialty.name}>
+                {specialty.name}
+              </option>
+            ))}
+          </select>
+          <input
+            value={doctorLocation}
+            onChange={(event) => setDoctorLocation(event.target.value)}
+            placeholder="Qyteti, p.sh. Prishtine"
+          />
+          <input
+            value={doctorFee}
+            onChange={(event) => setDoctorFee(event.target.value)}
+            placeholder="Cmimi, p.sh. 35 EUR"
+          />
           <button type="submit" disabled={doctorLoading}>
             {doctorLoading
               ? "Duke ruajtur..."
@@ -538,7 +787,12 @@ export default function AdminDashboard() {
               <article key={doctor.id || doctor.name} className="admin-doctor-item">
                 <div>
                   <strong>{doctor.name}</strong>
-                  <span>ID: {doctor.id || "pa id"}</span>
+                  <span>
+                    {[doctor.clinic, doctor.department, doctor.specialty, doctor.location]
+                      .filter(Boolean)
+                      .join(" / ") || "Pa organizim klinikor"}
+                  </span>
+                  <span>{doctor.fee || "Pa cmim"}</span>
                 </div>
                 <div className="card-actions">
                   <button type="button" className="secondary-button" onClick={() => startEditingDoctor(doctor)}>

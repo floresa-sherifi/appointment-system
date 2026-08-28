@@ -143,24 +143,22 @@ function formatAppointment(appointment) {
   return `${appointment.date} ne oren ${appointment.time} me ${appointment.doctor}.`;
 }
 
-function getDoctorProfile(doctorName, index) {
+function getDoctorProfile(doctorItem, index) {
+  const doctorName = doctorItem?.name || "";
   const normalizedName = toKey(doctorName);
   const matchedProfile = DOCTOR_PROFILES.find((profile) =>
     normalizedName.includes(profile.key)
   );
-
-  if (matchedProfile) {
-    return {
-      ...matchedProfile,
-      name: doctorName,
-    };
-  }
-
-  const fallbackProfile = DOCTOR_PROFILES[index % DOCTOR_PROFILES.length];
+  const baseProfile = matchedProfile || DOCTOR_PROFILES[index % DOCTOR_PROFILES.length];
 
   return {
-    ...fallbackProfile,
+    ...baseProfile,
     name: doctorName,
+    specialty: doctorItem?.specialty || baseProfile.specialty,
+    hospital: doctorItem?.clinic || baseProfile.hospital,
+    department: doctorItem?.department || "",
+    location: doctorItem?.location || baseProfile.location,
+    fee: doctorItem?.fee || baseProfile.fee,
   };
 }
 
@@ -430,26 +428,34 @@ export default function Dashboard() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
   const [doctorSearch, setDoctorSearch] = useState("");
+  const [doctorClinicFilter, setDoctorClinicFilter] = useState(ALL_SPECIALTIES_FILTER);
   const [bookingSpecialty, setBookingSpecialty] = useState(ALL_SPECIALTIES_FILTER);
   const appointmentEditorRef = useRef(null);
   const appointmentsSectionRef = useRef(null);
 
   const doctorCards = useMemo(
-    () => doctorsList.map((doctorItem, index) => getDoctorProfile(doctorItem.name, index)),
+    () => doctorsList.map((doctorItem, index) => getDoctorProfile(doctorItem, index)),
     [doctorsList]
+  );
+  const clinicFilters = useMemo(
+    () => [
+      ALL_SPECIALTIES_FILTER,
+      ...Array.from(new Set(doctorCards.map((doctorCard) => doctorCard.hospital).filter(Boolean))),
+    ],
+    [doctorCards]
   );
   const filteredDoctorCards = useMemo(() => {
     const query = doctorSearch.trim().toLowerCase();
 
-    if (!query) return doctorCards;
-
     return doctorCards.filter((doctorCard) =>
-      [doctorCard.name, doctorCard.specialty, doctorCard.hospital, doctorCard.location]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
+      (doctorClinicFilter === ALL_SPECIALTIES_FILTER || doctorCard.hospital === doctorClinicFilter) &&
+      (!query ||
+        [doctorCard.name, doctorCard.specialty, doctorCard.department, doctorCard.hospital, doctorCard.location]
+          .join(" ")
+          .toLowerCase()
+          .includes(query))
     );
-  }, [doctorCards, doctorSearch]);
+  }, [doctorCards, doctorClinicFilter, doctorSearch]);
 
   const upcomingAppointments = useMemo(
     () => appointments.filter((appointment) => !isPastAppointment(appointment)),
@@ -1357,8 +1363,15 @@ export default function Dashboard() {
               <input
                 value={doctorSearch}
                 onChange={(e) => setDoctorSearch(e.target.value)}
-                placeholder="Kerko sipas emrit, specialitetit ose qytetit"
+                placeholder="Kerko sipas emrit, specialitetit, departamentit ose qytetit"
               />
+              <select value={doctorClinicFilter} onChange={(event) => setDoctorClinicFilter(event.target.value)}>
+                {clinicFilters.map((clinic) => (
+                  <option key={clinic} value={clinic}>
+                    {clinic === ALL_SPECIALTIES_FILTER ? "Te gjitha klinikat" : clinic}
+                  </option>
+                ))}
+              </select>
               <div className="doctor-toolbar__summary">
                 {filteredDoctorCards.length} mjek{filteredDoctorCards.length !== 1 ? "e" : ""}
               </div>
@@ -1375,6 +1388,7 @@ export default function Dashboard() {
                     </div>
                     <h4>{doctorCard.name}</h4>
                     <p className="doctor-specialty">{doctorCard.specialty}</p>
+                    {doctorCard.department && <p className="doctor-department">{doctorCard.department}</p>}
                     <p>{doctorCard.bio}</p>
                     <div className="doctor-details">
                       <span>{doctorCard.location}</span>

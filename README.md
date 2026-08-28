@@ -38,6 +38,7 @@ Appointment System eshte nje aplikacion web per rezervimin dhe menaxhimin e term
 - `docs/demo-plan.md`: plani i prezantimit final
 - `docs/email-notifications.md`: setup per email notifications
 - `docs/email-notifications.sql`: SQL per log-et e email reminders
+- `docs/clinic-organization.sql`: SQL per klinika, departamente, specialitete dhe fushat shtese te mjekeve
 
 ## Live URL
 
