@@ -407,6 +407,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [doctorsList, setDoctorsList] = useState([]);
+  const [clinicsList, setClinicsList] = useState([]);
   const [doctorSchedules, setDoctorSchedules] = useState([]);
   const [availableTimes, setAvailableTimes] = useState(ALL_TIMES);
   const [date, setDate] = useState("");
@@ -440,9 +441,14 @@ export default function Dashboard() {
   const clinicFilters = useMemo(
     () => [
       ALL_SPECIALTIES_FILTER,
-      ...Array.from(new Set(doctorCards.map((doctorCard) => doctorCard.hospital).filter(Boolean))),
+      ...Array.from(
+        new Set([
+          ...clinicsList.map((clinic) => clinic.name).filter(Boolean),
+          ...doctorCards.map((doctorCard) => doctorCard.hospital).filter(Boolean),
+        ])
+      ),
     ],
-    [doctorCards]
+    [clinicsList, doctorCards]
   );
   const filteredDoctorCards = useMemo(() => {
     const query = doctorSearch.trim().toLowerCase();
@@ -574,7 +580,11 @@ export default function Dashboard() {
     async function loadDashboardData() {
       setLoading(true);
 
-      const [{ data: appointmentsData, error: appointmentsError }, { data: doctorsData }] =
+      const [
+        { data: appointmentsData, error: appointmentsError },
+        { data: doctorsData },
+        { data: clinicsData },
+      ] =
         await Promise.all([
           supabase
             .from("appointments")
@@ -583,6 +593,7 @@ export default function Dashboard() {
             .order("date", { ascending: true })
             .order("time", { ascending: true }),
           supabase.from("doctors").select("*"),
+          supabase.from("clinics").select("*").order("name", { ascending: true }),
         ]);
 
       const { data: schedulesData, error: schedulesError } = await supabase
@@ -595,6 +606,7 @@ export default function Dashboard() {
       else setAppointments(appointmentsData || []);
 
       setDoctorsList(doctorsData || []);
+      setClinicsList(clinicsData || []);
       setDoctorSchedules(schedulesData || []);
       if (schedulesError) {
         setDoctorSchedules([]);
