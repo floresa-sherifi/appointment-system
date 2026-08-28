@@ -6,6 +6,21 @@ import AdminDashboard from "./pages/AdminDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
+import { getUserRole } from "./utils/roles";
+
+function RoleDashboard() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <p className="page-loading">Loading...</p>;
+
+  const role = getUserRole(user);
+
+  if (role === "admin") return <AdminDashboard />;
+  if (role === "doctor") return <DoctorDashboard />;
+
+  return <Dashboard />;
+}
 
 function App() {
   return (
@@ -20,7 +35,7 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <RoleDashboard />
               </ProtectedRoute>
             }
           />

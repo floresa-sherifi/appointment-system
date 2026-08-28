@@ -211,9 +211,6 @@ export default function DoctorDashboard() {
           </p>
         </div>
         <div className="admin-actions">
-          <Link className="text-link-button" to="/dashboard">
-            Pacient view
-          </Link>
           {isAdminUser(user) && (
             <Link className="text-link-button" to="/admin">
               Admin Dashboard
