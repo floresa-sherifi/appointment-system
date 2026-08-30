@@ -101,6 +101,16 @@ async function fetchDoctorSchedules() {
   return { data: data || [], error };
 }
 
+async function fetchDoctorBlockedSlots() {
+  const { data, error } = await supabase
+    .from("doctor_blocked_slots")
+    .select("*")
+    .order("date", { ascending: true })
+    .order("time", { ascending: true });
+
+  return { data: data || [], error };
+}
+
 async function fetchNamedResource(tableName) {
   const { data, error } = await supabase
     .from(tableName)
@@ -118,6 +128,7 @@ export default function AdminDashboard() {
   const [departments, setDepartments] = useState([]);
   const [specialties, setSpecialties] = useState([]);
   const [doctorSchedules, setDoctorSchedules] = useState([]);
+  const [doctorBlockedSlots, setDoctorBlockedSlots] = useState([]);
   const [doctorName, setDoctorName] = useState("");
   const [doctorClinic, setDoctorClinic] = useState("");
   const [doctorDepartment, setDoctorDepartment] = useState("");
@@ -133,6 +144,10 @@ export default function AdminDashboard() {
   const [scheduleStartTime, setScheduleStartTime] = useState("09:00");
   const [scheduleEndTime, setScheduleEndTime] = useState("17:00");
   const [scheduleSlotMinutes, setScheduleSlotMinutes] = useState(30);
+  const [blockedDoctorName, setBlockedDoctorName] = useState("");
+  const [blockedDate, setBlockedDate] = useState("");
+  const [blockedTime, setBlockedTime] = useState("");
+  const [blockedReason, setBlockedReason] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [doctorFilter, setDoctorFilter] = useState("all");
   const [clinicFilter, setClinicFilter] = useState("all");
@@ -143,10 +158,12 @@ export default function AdminDashboard() {
   const [doctorLoading, setDoctorLoading] = useState(false);
   const [organizationLoading, setOrganizationLoading] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [blockedSlotLoading, setBlockedSlotLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [limitedMode, setLimitedMode] = useState(false);
   const [scheduleWarning, setScheduleWarning] = useState("");
+  const [blockedSlotsWarning, setBlockedSlotsWarning] = useState("");
   const [activeAdminView, setActiveAdminView] = useState("overview");
 
   const canAccessAdmin = isAdminUser(user);
@@ -242,6 +259,14 @@ export default function AdminDashboard() {
     [doctorSchedules]
   );
 
+  const sortedBlockedSlots = useMemo(
+    () =>
+      [...doctorBlockedSlots].sort((firstSlot, secondSlot) =>
+        `${firstSlot.date || ""} ${firstSlot.time || ""}`.localeCompare(`${secondSlot.date || ""} ${secondSlot.time || ""}`)
+      ),
+    [doctorBlockedSlots]
+  );
+
   const resetDoctorForm = () => {
     setDoctorName("");
     setDoctorClinic("");
@@ -258,6 +283,13 @@ export default function AdminDashboard() {
     setScheduleStartTime("09:00");
     setScheduleEndTime("17:00");
     setScheduleSlotMinutes(30);
+  };
+
+  const resetBlockedSlotForm = () => {
+    setBlockedDoctorName("");
+    setBlockedDate("");
+    setBlockedTime("");
+    setBlockedReason("");
   };
 
   const toggleScheduleDay = (dayValue) => {
@@ -299,6 +331,7 @@ export default function AdminDashboard() {
       { data: appointmentsData, limited, error: appointmentsError },
       { data: doctorsData },
       { data: schedulesData, error: schedulesError },
+      { data: blockedSlotsData, error: blockedSlotsError },
       { data: clinicsData },
       { data: departmentsData },
       { data: specialtiesData },
@@ -307,6 +340,7 @@ export default function AdminDashboard() {
         fetchAppointmentsWithFallback(user.id),
         supabase.from("doctors").select("*"),
         fetchDoctorSchedules(),
+        fetchDoctorBlockedSlots(),
         fetchNamedResource("clinics"),
         fetchNamedResource("departments"),
         fetchNamedResource("specialties"),
@@ -315,6 +349,7 @@ export default function AdminDashboard() {
     setAppointments(appointmentsData || []);
     setDoctors(doctorsData || []);
     setDoctorSchedules(schedulesData || []);
+    setDoctorBlockedSlots(blockedSlotsData || []);
     setClinics(clinicsData || []);
     setDepartments(departmentsData || []);
     setSpecialties(specialtiesData || []);
@@ -322,6 +357,11 @@ export default function AdminDashboard() {
     setScheduleWarning(
       schedulesError
         ? "Tabela doctor_schedules nuk eshte gati ose nuk ka leje. Orari dinamik nuk ruhet ende."
+        : ""
+    );
+    setBlockedSlotsWarning(
+      blockedSlotsError
+        ? "Tabela doctor_blocked_slots nuk eshte gati ose nuk ka leje. Bllokimet nuk ruhen ende."
         : ""
     );
 
@@ -347,6 +387,7 @@ export default function AdminDashboard() {
         { data: appointmentsData, limited, error: appointmentsError },
         { data: doctorsData },
         { data: schedulesData, error: schedulesError },
+        { data: blockedSlotsData, error: blockedSlotsError },
         { data: clinicsData },
         { data: departmentsData },
         { data: specialtiesData },
@@ -355,6 +396,7 @@ export default function AdminDashboard() {
           fetchAppointmentsWithFallback(user.id),
           supabase.from("doctors").select("*"),
           fetchDoctorSchedules(),
+          fetchDoctorBlockedSlots(),
           fetchNamedResource("clinics"),
           fetchNamedResource("departments"),
           fetchNamedResource("specialties"),
@@ -365,6 +407,7 @@ export default function AdminDashboard() {
       setAppointments(appointmentsData || []);
       setDoctors(doctorsData || []);
       setDoctorSchedules(schedulesData || []);
+      setDoctorBlockedSlots(blockedSlotsData || []);
       setClinics(clinicsData || []);
       setDepartments(departmentsData || []);
       setSpecialties(specialtiesData || []);
@@ -372,6 +415,11 @@ export default function AdminDashboard() {
       setScheduleWarning(
         schedulesError
           ? "Tabela doctor_schedules nuk eshte gati ose nuk ka leje. Orari dinamik nuk ruhet ende."
+          : ""
+      );
+      setBlockedSlotsWarning(
+        blockedSlotsError
+          ? "Tabela doctor_blocked_slots nuk eshte gati ose nuk ka leje. Bllokimet nuk ruhen ende."
           : ""
       );
 
@@ -624,6 +672,77 @@ export default function AdminDashboard() {
     setSuccess("Orari i mjekut u ruajt ne Supabase me sukses.");
     resetScheduleForm();
     setScheduleLoading(false);
+  };
+
+  const handleBlockedSlotSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!blockedDoctorName || !blockedDate || !blockedTime) {
+      setError("Zgjidh mjekun, daten dhe oren qe duhet te bllokohet.");
+      return;
+    }
+
+    setBlockedSlotLoading(true);
+    setError("");
+    setSuccess("");
+
+    const payload = {
+      doctor_name: blockedDoctorName,
+      date: blockedDate,
+      time: blockedTime,
+      reason: blockedReason.trim(),
+    };
+
+    const { data, error: blockedSlotError } = await supabase
+      .from("doctor_blocked_slots")
+      .upsert(payload, { onConflict: "doctor_name,date,time" })
+      .select("*")
+      .single();
+
+    if (blockedSlotError) {
+      setError("Bllokimi nuk u ruajt. Ekzekuto docs/doctor-schedules.sql dhe kontrollo RLS per admin.");
+      setBlockedSlotLoading(false);
+      return;
+    }
+
+    setDoctorBlockedSlots((currentSlots) => {
+      const slotExists = currentSlots.some((slot) => slot.id === data.id);
+
+      if (slotExists) {
+        return currentSlots.map((slot) => (slot.id === data.id ? data : slot));
+      }
+
+      return [...currentSlots.filter(
+        (slot) =>
+          slot.doctor_name !== data.doctor_name ||
+          slot.date !== data.date ||
+          slot.time !== data.time
+      ), data];
+    });
+    setSuccess("Orari u bllokua me sukses.");
+    resetBlockedSlotForm();
+    setBlockedSlotLoading(false);
+  };
+
+  const deleteBlockedSlot = async (blockedSlotId) => {
+    setBlockedSlotLoading(true);
+    setError("");
+    setSuccess("");
+
+    const { error: blockedSlotError } = await supabase
+      .from("doctor_blocked_slots")
+      .delete()
+      .eq("id", blockedSlotId);
+
+    if (blockedSlotError) {
+      setError("Bllokimi nuk u fshi. Kontrollo RLS per doctor_blocked_slots.");
+      setBlockedSlotLoading(false);
+      return;
+    }
+
+    setDoctorBlockedSlots((currentSlots) => currentSlots.filter((slot) => slot.id !== blockedSlotId));
+    setSuccess("Bllokimi u fshi me sukses.");
+    setBlockedSlotLoading(false);
   };
 
   const logout = async () => {
@@ -957,6 +1076,7 @@ export default function AdminDashboard() {
         </div>
 
         {scheduleWarning && <div className="feedback-banner error-banner">{scheduleWarning}</div>}
+        {blockedSlotsWarning && <div className="feedback-banner error-banner">{blockedSlotsWarning}</div>}
 
         <form className="admin-schedule-form" onSubmit={handleScheduleSubmit}>
           <label>
@@ -1047,6 +1167,76 @@ export default function AdminDashboard() {
                   onClick={() => startEditingSchedule(schedule)}
                 >
                   Edit
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+
+        <div className="schedule-divider" />
+
+        <div className="panel-heading admin-table-heading">
+          <div>
+            <p className="section-eyebrow">Blocked slots</p>
+            <h3>Pauza dhe takime tjera</h3>
+          </div>
+          <button type="button" className="ghost-button" onClick={resetBlockedSlotForm}>
+            Pastro bllokimin
+          </button>
+        </div>
+
+        <form className="admin-blocked-form" onSubmit={handleBlockedSlotSubmit}>
+          <label>
+            <span>Mjeku</span>
+            <select value={blockedDoctorName} onChange={(event) => setBlockedDoctorName(event.target.value)}>
+              <option value="">Zgjidh mjekun</option>
+              {sortedDoctors.map((doctor) => (
+                <option key={doctor.id || doctor.name} value={doctor.name}>
+                  {doctor.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Data</span>
+            <input type="date" value={blockedDate} onChange={(event) => setBlockedDate(event.target.value)} />
+          </label>
+
+          <label>
+            <span>Ora</span>
+            <input type="time" value={blockedTime} onChange={(event) => setBlockedTime(event.target.value)} />
+          </label>
+
+          <label>
+            <span>Arsyeja</span>
+            <input
+              value={blockedReason}
+              onChange={(event) => setBlockedReason(event.target.value)}
+              placeholder="p.sh. Pauze, takim, operacion"
+            />
+          </label>
+
+          <button type="submit" disabled={blockedSlotLoading}>
+            {blockedSlotLoading ? "Duke ruajtur..." : "Blloko oren"}
+          </button>
+        </form>
+
+        {sortedBlockedSlots.length === 0 ? (
+          <p className="empty-state">Nuk ka orare te bllokuara ende.</p>
+        ) : (
+          <div className="admin-doctor-list">
+            {sortedBlockedSlots.map((slot) => (
+              <article key={slot.id || `${slot.doctor_name}-${slot.date}-${slot.time}`} className="admin-doctor-item">
+                <div>
+                  <strong>{slot.doctor_name}</strong>
+                  <span>
+                    {slot.date} / {slot.time}
+                    {slot.reason ? ` / ${slot.reason}` : ""}
+                  </span>
+                </div>
+                <button type="button" className="delete-btn" onClick={() => deleteBlockedSlot(slot.id)}>
+                  Fshi
                 </button>
               </article>
             ))}

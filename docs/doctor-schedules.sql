@@ -23,6 +23,18 @@ $$;
 
 alter table public.doctor_schedules enable row level security;
 
+create table if not exists public.doctor_blocked_slots (
+  id uuid primary key default gen_random_uuid(),
+  doctor_name text not null,
+  date date not null,
+  time text not null,
+  reason text not null default '',
+  created_at timestamptz not null default now(),
+  unique (doctor_name, date, time)
+);
+
+alter table public.doctor_blocked_slots enable row level security;
+
 drop policy if exists "Authenticated users can read doctor schedules" on public.doctor_schedules;
 create policy "Authenticated users can read doctor schedules"
 on public.doctor_schedules
@@ -34,6 +46,21 @@ drop policy if exists "Authenticated users can manage doctor schedules" on publi
 drop policy if exists "Admins can manage doctor schedules" on public.doctor_schedules;
 create policy "Admins can manage doctor schedules"
 on public.doctor_schedules
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "Authenticated users can read doctor blocked slots" on public.doctor_blocked_slots;
+create policy "Authenticated users can read doctor blocked slots"
+on public.doctor_blocked_slots
+for select
+to authenticated
+using (true);
+
+drop policy if exists "Admins can manage doctor blocked slots" on public.doctor_blocked_slots;
+create policy "Admins can manage doctor blocked slots"
+on public.doctor_blocked_slots
 for all
 to authenticated
 using (public.is_admin())

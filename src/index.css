@@ -1150,7 +1150,20 @@ button:disabled {
   margin-bottom: 16px;
 }
 
+.admin-blocked-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.1fr) repeat(2, minmax(130px, 0.7fr)) minmax(220px, 1.2fr) minmax(130px, 0.7fr);
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
 .admin-schedule-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-blocked-form label {
   display: grid;
   gap: 6px;
 }
@@ -1160,10 +1173,27 @@ button:disabled {
   font-weight: 700;
 }
 
+.admin-blocked-form span {
+  color: #203150;
+  font-weight: 700;
+}
+
 .admin-schedule-form input,
 .admin-schedule-form select,
 .admin-schedule-form button {
   margin-top: 0;
+}
+
+.admin-blocked-form input,
+.admin-blocked-form select,
+.admin-blocked-form button {
+  margin-top: 0;
+}
+
+.schedule-divider {
+  height: 1px;
+  margin: 26px 0;
+  background: rgba(150, 170, 216, 0.24);
 }
 
 .schedule-days {
@@ -1366,6 +1396,7 @@ button:disabled {
   .admin-filters,
   .admin-doctor-form,
   .admin-schedule-form,
+  .admin-blocked-form,
   .reports-grid,
   .booking-doctor-grid,
   .booking-summary {

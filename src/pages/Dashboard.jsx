@@ -441,6 +441,7 @@ export default function Dashboard() {
   const [doctorsList, setDoctorsList] = useState([]);
   const [clinicsList, setClinicsList] = useState([]);
   const [doctorSchedules, setDoctorSchedules] = useState([]);
+  const [doctorBlockedSlots, setDoctorBlockedSlots] = useState([]);
   const [availableTimes, setAvailableTimes] = useState(ALL_TIMES);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -631,6 +632,9 @@ export default function Dashboard() {
       const { data: schedulesData, error: schedulesError } = await supabase
         .from("doctor_schedules")
         .select("*");
+      const { data: blockedSlotsData, error: blockedSlotsError } = await supabase
+        .from("doctor_blocked_slots")
+        .select("*");
 
       if (cancelled) return;
 
@@ -642,6 +646,10 @@ export default function Dashboard() {
       setDoctorSchedules(schedulesData || []);
       if (schedulesError) {
         setDoctorSchedules([]);
+      }
+      setDoctorBlockedSlots(blockedSlotsData || []);
+      if (blockedSlotsError) {
+        setDoctorBlockedSlots([]);
       }
       setLoading(false);
     }
@@ -682,8 +690,15 @@ export default function Dashboard() {
         data
           ?.filter((appointment) => appointment.id !== editingAppointmentId)
           .map((appointment) => appointment.time) || [];
+      const blockedTimes = doctorBlockedSlots
+        .filter(
+          (slot) =>
+            normalizeDoctorName(slot.doctor_name) === normalizeDoctorName(doctor) &&
+            slot.date === date
+        )
+        .map((slot) => slot.time);
 
-      const freeTimes = scheduleTimes.filter((slot) => !bookedTimes.includes(slot));
+      const freeTimes = scheduleTimes.filter((slot) => !bookedTimes.includes(slot) && !blockedTimes.includes(slot));
       setAvailableTimes(freeTimes);
 
       if (time && !freeTimes.includes(time)) {
@@ -696,7 +711,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [doctor, date, doctorSchedules, editingAppointmentId, time]);
+  }, [doctor, date, doctorBlockedSlots, doctorSchedules, editingAppointmentId, time]);
 
   const resetForm = () => {
     setDate("");
