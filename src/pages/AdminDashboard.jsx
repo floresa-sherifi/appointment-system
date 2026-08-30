@@ -23,6 +23,20 @@ const WEEK_DAYS = [
   { value: "sun", label: "Diel" },
 ];
 
+function buildDayTimeSlots(slotMinutes = 30) {
+  const slots = [];
+
+  for (let minutes = 0; minutes < 24 * 60; minutes += slotMinutes) {
+    const hours = Math.floor(minutes / 60).toString().padStart(2, "0");
+    const remainingMinutes = (minutes % 60).toString().padStart(2, "0");
+    slots.push(`${hours}:${remainingMinutes}`);
+  }
+
+  return slots;
+}
+
+const ALL_BLOCKED_SLOT_TIMES = buildDayTimeSlots();
+
 const ADMIN_VIEWS = [
   { id: "overview", label: "Dashboard" },
   { id: "organization", label: "Organizimi" },
@@ -1205,7 +1219,14 @@ export default function AdminDashboard() {
 
           <label>
             <span>Ora</span>
-            <input type="time" value={blockedTime} onChange={(event) => setBlockedTime(event.target.value)} />
+            <select value={blockedTime} onChange={(event) => setBlockedTime(event.target.value)}>
+              <option value="">Zgjidh oren</option>
+              {ALL_BLOCKED_SLOT_TIMES.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
