@@ -146,14 +146,18 @@ insert into public.departments (name)
 values
   ('Kardiologji'),
   ('Pediatri'),
-  ('Dermatologji')
+  ('Dermatologji'),
+  ('Mjekesi interne'),
+  ('Ortopedi')
 on conflict (name) do nothing;
 
 insert into public.specialties (name)
 values
   ('Kardiologe'),
   ('Pediater'),
-  ('Dermatologe')
+  ('Dermatologe'),
+  ('Internist'),
+  ('Ortoped')
 on conflict (name) do nothing;
 
 update public.doctors
@@ -182,3 +186,21 @@ set
   location = 'Mitrovice',
   fee = '40 EUR'
 where lower(name) like '%fjolla%';
+
+update public.doctors
+set
+  clinic = 'Spitali i Pergjithshem Mitrovice',
+  department = 'Mjekesi interne',
+  specialty = 'Internist',
+  location = 'Mitrovice',
+  fee = '32 EUR'
+where lower(name) like '%arber%';
+
+update public.doctors
+set
+  clinic = 'Spitali i Pergjithshem Mitrovice',
+  department = 'Ortopedi',
+  specialty = 'Ortoped',
+  location = 'Mitrovice',
+  fee = '38 EUR'
+where lower(name) like '%luan%';

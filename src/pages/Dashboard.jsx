@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { isAdminUser, isDoctorUser } from "../utils/roles";
+import doctorArberPhoto from "../assets/doctors/doctor-arber.png";
+import doctorBlerimPhoto from "../assets/doctors/doctor-blerim.png";
+import doctorEliraPhoto from "../assets/doctors/doctor-elira.png";
+import doctorFjollaPhoto from "../assets/doctors/doctor-fjolla.png";
+import doctorLuanPhoto from "../assets/doctors/doctor-luan.png";
 
 const ALL_TIMES = [
   "09:00",
@@ -24,46 +29,69 @@ const ALL_TIMES = [
 
 const DOCTOR_PROFILES = [
   {
-    key: "ava",
+    key: "elira",
     specialty: "Kardiologe",
-    hospital: "Qendra HealthPlus",
+    hospital: "Poliklinika HealthPlus Mitrovice",
     experience: "9 vite eksperience",
-    location: "Prishtine",
+    location: "Mitrovice",
     fee: "35 EUR",
     days: ["Hene", "Merkure", "Premte"],
-    photo:
-      "https://images.pexels.com/photos/15752232/pexels-photo-15752232.jpeg?cs=srgb&dl=pexels-yasinaydin-15752232.jpg&fm=jpg",
+    photo: doctorEliraPhoto,
     accent: "cardiology",
     rating: "4.9",
     bio: "Kujdes i avancuar per zemren, konsultime preventive dhe trajtim modern.",
   },
   {
-    key: "ben",
+    key: "blerim",
     specialty: "Pediater",
-    hospital: "Klinika Family Care",
+    hospital: "Klinika Family Care Mitrovice",
     experience: "7 vite eksperience",
-    location: "Prizren",
+    location: "Mitrovice",
     fee: "30 EUR",
     days: ["Marte", "Enjte", "Shtune"],
-    photo:
-      "https://images.pexels.com/photos/6762876/pexels-photo-6762876.jpeg?cs=srgb&dl=pexels-usman-yousaf-708951-6762876.jpg&fm=jpg",
+    photo: doctorBlerimPhoto,
     accent: "pediatrics",
     rating: "4.8",
     bio: "Vizita te qeta dhe miqesore per femije, me fokus te komunikimi me prinderit.",
   },
   {
-    key: "cora",
+    key: "fjolla",
     specialty: "Dermatologe",
-    hospital: "Skin Studio",
+    hospital: "Klinika Dermatologjike Mitrovice",
     experience: "11 vite eksperience",
-    location: "Peje",
+    location: "Mitrovice",
     fee: "40 EUR",
     days: ["Hene", "Enjte", "Premte"],
-    photo:
-      "https://images.pexels.com/photos/32254667/pexels-photo-32254667.jpeg?cs=srgb&dl=pexels-konrads-photo-32254667.jpg&fm=jpg",
+    photo: doctorFjollaPhoto,
     accent: "dermatology",
     rating: "5.0",
     bio: "Diagnoze estetike dhe klinike me plan te personalizuar per cdo pacient.",
+  },
+  {
+    key: "arber",
+    specialty: "Internist",
+    hospital: "Spitali i Pergjithshem Mitrovice",
+    experience: "8 vite eksperience",
+    location: "Mitrovice",
+    fee: "32 EUR",
+    days: ["Hene", "Marte", "Enjte"],
+    photo: doctorArberPhoto,
+    accent: "cardiology",
+    rating: "4.7",
+    bio: "Konsulta te pergjithshme, kontroll preventiv dhe percjellje e gjendjeve kronike.",
+  },
+  {
+    key: "luan",
+    specialty: "Ortoped",
+    hospital: "Spitali i Pergjithshem Mitrovice",
+    experience: "10 vite eksperience",
+    location: "Mitrovice",
+    fee: "38 EUR",
+    days: ["Hene", "Merkure", "Premte"],
+    photo: doctorLuanPhoto,
+    accent: "pediatrics",
+    rating: "4.8",
+    bio: "Trajtim i lendimeve, dhimbjeve te nyjeve dhe kontroll ortopedik i personalizuar.",
   },
 ];
 
