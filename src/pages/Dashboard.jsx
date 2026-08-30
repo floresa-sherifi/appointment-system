@@ -99,6 +99,10 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
+function getPatientName(user) {
+  return user?.user_metadata?.name || user?.email || "Pacient";
+}
+
 function getAppointmentDateTime(appointment) {
   return new Date(`${appointment.date}T${appointment.time || "00:00"}:00`);
 }
@@ -736,7 +740,13 @@ export default function Dashboard() {
     setLoading(true);
 
     const currentEditingId = editingAppointmentId;
-    const fallbackPayload = { user_id: user.id, date, time, doctor };
+    const fallbackPayload = {
+      user_id: user.id,
+      patient_name: getPatientName(user),
+      date,
+      time,
+      doctor,
+    };
     const payload = {
       ...fallbackPayload,
       status: "pending",

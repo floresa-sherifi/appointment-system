@@ -8,6 +8,15 @@ check (status in ('pending', 'confirmed', 'cancelled', 'completed'));
 alter table public.appointments
 add column if not exists visit_notes text not null default '';
 
+alter table public.appointments
+add column if not exists patient_name text not null default '';
+
+update public.appointments
+set patient_name = coalesce(auth.users.raw_user_meta_data ->> 'name', auth.users.email, appointments.user_id::text)
+from auth.users
+where appointments.user_id = auth.users.id
+  and coalesce(appointments.patient_name, '') = '';
+
 create or replace function public.is_admin()
 returns boolean
 language sql

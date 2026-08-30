@@ -1083,6 +1083,39 @@ button:disabled {
   font-weight: 700;
 }
 
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.report-card {
+  min-width: 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f8fbff, #fff7f0);
+  border: 1px solid rgba(150, 170, 216, 0.18);
+}
+
+.report-card--wide {
+  grid-column: span 2;
+}
+
+.report-card span,
+.report-card p {
+  display: block;
+  margin: 0;
+  color: #667792;
+}
+
+.report-card strong {
+  display: block;
+  margin: 8px 0;
+  color: #203150;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
 .admin-schedule-form {
   display: grid;
   grid-template-columns: minmax(220px, 1.2fr) minmax(240px, 1.6fr) repeat(3, minmax(130px, 0.7fr));
@@ -1147,9 +1180,9 @@ button:disabled {
 
 .admin-filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 210px;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
   gap: 12px;
-  width: min(100%, 620px);
+  width: min(100%, 900px);
 }
 
 .admin-filters input,
@@ -1248,6 +1281,10 @@ button:disabled {
   .admin-filters {
     width: 100%;
   }
+
+  .reports-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1303,9 +1340,14 @@ button:disabled {
   .admin-filters,
   .admin-doctor-form,
   .admin-schedule-form,
+  .reports-grid,
   .booking-doctor-grid,
   .booking-summary {
     grid-template-columns: 1fr;
+  }
+
+  .report-card--wide {
+    grid-column: auto;
   }
 
   .specialty-pill,

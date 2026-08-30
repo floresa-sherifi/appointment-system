@@ -17,6 +17,10 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
+function getPatientDisplayName(appointment) {
+  return appointment?.patient_name || `Pacient ${appointment?.user_id?.slice(0, 8) || ""}`.trim();
+}
+
 function normalizeDoctorName(value) {
   return (value || "")
     .toLowerCase()
@@ -179,6 +183,11 @@ export default function DoctorDashboard() {
     setSuccess("Shenimet pas vizites u ruajten.");
   };
 
+  const logout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   if (authLoading) return <p className="page-loading">Loading...</p>;
 
   if (!canAccessDoctorPanel) {
@@ -219,6 +228,9 @@ export default function DoctorDashboard() {
           )}
           <button type="button" className="ghost-button" onClick={loadDoctorAppointments}>
             Rifresko
+          </button>
+          <button type="button" className="logout-button" onClick={logout}>
+            Logout
           </button>
         </div>
       </section>
@@ -296,7 +308,7 @@ export default function DoctorDashboard() {
                     <td>{appointment.date}</td>
                     <td>{appointment.time}</td>
                     <td>{appointment.doctor}</td>
-                    <td>{appointment.user_id}</td>
+                    <td>{getPatientDisplayName(appointment)}</td>
                     <td>
                       <select
                         className={`status-select status-${getAppointmentStatus(appointment)}`}

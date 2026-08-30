@@ -27,6 +27,26 @@ function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
 
+function getPatientDisplayName(appointment) {
+  return appointment?.patient_name || `Pacient ${appointment?.user_id?.slice(0, 8) || ""}`.trim();
+}
+
+function toDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getWeekStart(date) {
+  const weekStart = new Date(date);
+  const day = weekStart.getDay() || 7;
+  weekStart.setDate(weekStart.getDate() - day + 1);
+
+  return weekStart;
+}
+
+function getDoctorClinic(doctorName, doctors = []) {
+  return doctors.find((doctor) => doctor.name === doctorName)?.clinic || "";
+}
+
 function formatWorkDays(workDays = []) {
   if (!workDays.length) return "Pa dite te zgjedhura";
 
@@ -106,6 +126,10 @@ export default function AdminDashboard() {
   const [scheduleEndTime, setScheduleEndTime] = useState("17:00");
   const [scheduleSlotMinutes, setScheduleSlotMinutes] = useState(30);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [doctorFilter, setDoctorFilter] = useState("all");
+  const [clinicFilter, setClinicFilter] = useState("all");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [doctorLoading, setDoctorLoading] = useState(false);
@@ -123,17 +147,22 @@ export default function AdminDashboard() {
 
     return appointments.filter((appointment) => {
       const status = getAppointmentStatus(appointment);
+      const appointmentClinic = getDoctorClinic(appointment.doctor, doctors);
       const matchesStatus = statusFilter === "all" || status === statusFilter;
+      const matchesDoctor = doctorFilter === "all" || appointment.doctor === doctorFilter;
+      const matchesClinic = clinicFilter === "all" || appointmentClinic === clinicFilter;
+      const matchesDateFrom = !dateFromFilter || appointment.date >= dateFromFilter;
+      const matchesDateTo = !dateToFilter || appointment.date <= dateToFilter;
       const matchesSearch =
         !query ||
-        [appointment.doctor, appointment.date, appointment.time, appointment.user_id]
+        [appointment.doctor, appointmentClinic, appointment.patient_name, appointment.date, appointment.time, appointment.user_id]
           .join(" ")
           .toLowerCase()
           .includes(query);
 
-      return matchesStatus && matchesSearch;
+      return matchesStatus && matchesDoctor && matchesClinic && matchesDateFrom && matchesDateTo && matchesSearch;
     });
-  }, [appointments, search, statusFilter]);
+  }, [appointments, clinicFilter, dateFromFilter, dateToFilter, doctorFilter, doctors, search, statusFilter]);
 
   const stats = useMemo(
     () =>
@@ -146,6 +175,32 @@ export default function AdminDashboard() {
       ),
     [appointments]
   );
+
+  const reportStats = useMemo(() => {
+    const today = new Date();
+    const todayKey = toDateKey(today);
+    const weekStartKey = toDateKey(getWeekStart(today));
+    const monthStartKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const totalsByDoctor = appointments.reduce((totals, appointment) => {
+      if (!appointment.doctor) return totals;
+
+      return {
+        ...totals,
+        [appointment.doctor]: (totals[appointment.doctor] || 0) + 1,
+      };
+    }, {});
+    const topDoctorEntry = Object.entries(totalsByDoctor).sort((firstEntry, secondEntry) => secondEntry[1] - firstEntry[1])[0];
+
+    return {
+      today: appointments.filter((appointment) => appointment.date === todayKey).length,
+      week: appointments.filter((appointment) => appointment.date >= weekStartKey).length,
+      month: appointments.filter((appointment) => appointment.date >= monthStartKey).length,
+      cancelled: appointments.filter((appointment) => getAppointmentStatus(appointment) === "cancelled").length,
+      topDoctorName: topDoctorEntry?.[0] || "Nuk ka ende",
+      topDoctorCount: topDoctorEntry?.[1] || 0,
+      filtered: filteredAppointments.length,
+    };
+  }, [appointments, filteredAppointments.length]);
 
   const sortedDoctors = useMemo(
     () =>
@@ -562,6 +617,11 @@ export default function AdminDashboard() {
     setScheduleLoading(false);
   };
 
+  const logout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   if (authLoading) return <p className="page-loading">Loading...</p>;
 
   if (!canAccessAdmin) {
@@ -598,6 +658,9 @@ export default function AdminDashboard() {
           <button type="button" className="ghost-button" onClick={loadAdminData}>
             Rifresko
           </button>
+          <button type="button" className="logout-button" onClick={logout}>
+            Logout
+          </button>
         </div>
       </section>
 
@@ -622,6 +685,48 @@ export default function AdminDashboard() {
         <div className="mini-stat">
           <span>Klinika</span>
           <strong>{clinics.length}</strong>
+        </div>
+      </section>
+
+      <section className="panel admin-table-panel">
+        <div className="panel-heading admin-table-heading">
+          <div>
+            <p className="section-eyebrow">Reports</p>
+            <h3>Raporte dhe statistika</h3>
+          </div>
+        </div>
+
+        <div className="reports-grid">
+          <div className="report-card">
+            <span>Sot</span>
+            <strong>{reportStats.today}</strong>
+            <p>Termine ditore</p>
+          </div>
+          <div className="report-card">
+            <span>Kete jave</span>
+            <strong>{reportStats.week}</strong>
+            <p>Termine javore</p>
+          </div>
+          <div className="report-card">
+            <span>Kete muaj</span>
+            <strong>{reportStats.month}</strong>
+            <p>Termine mujore</p>
+          </div>
+          <div className="report-card">
+            <span>Te anuluara</span>
+            <strong>{reportStats.cancelled}</strong>
+            <p>Termine cancelled</p>
+          </div>
+          <div className="report-card report-card--wide">
+            <span>Mjeku me me shume termine</span>
+            <strong>{reportStats.topDoctorName}</strong>
+            <p>{reportStats.topDoctorCount} termine gjithsej</p>
+          </div>
+          <div className="report-card">
+            <span>Rezultate filtri</span>
+            <strong>{reportStats.filtered}</strong>
+            <p>Termine te shfaqura</p>
+          </div>
         </div>
       </section>
 
@@ -928,8 +1033,24 @@ export default function AdminDashboard() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Kerko mjek, date ose user id"
+              placeholder="Kerko mjek, pacient, klinike ose date"
             />
+            <select value={doctorFilter} onChange={(event) => setDoctorFilter(event.target.value)}>
+              <option value="all">Te gjithe mjeket</option>
+              {sortedDoctors.map((doctor) => (
+                <option key={doctor.id || doctor.name} value={doctor.name}>
+                  {doctor.name}
+                </option>
+              ))}
+            </select>
+            <select value={clinicFilter} onChange={(event) => setClinicFilter(event.target.value)}>
+              <option value="all">Te gjitha klinikat</option>
+              {sortedClinics.map((clinic) => (
+                <option key={clinic.id || clinic.name} value={clinic.name}>
+                  {clinic.name}
+                </option>
+              ))}
+            </select>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">Te gjitha statuset</option>
               {STATUS_OPTIONS.map((status) => (
@@ -938,6 +1059,18 @@ export default function AdminDashboard() {
                 </option>
               ))}
             </select>
+            <input
+              type="date"
+              value={dateFromFilter}
+              onChange={(event) => setDateFromFilter(event.target.value)}
+              aria-label="Filtro nga data"
+            />
+            <input
+              type="date"
+              value={dateToFilter}
+              onChange={(event) => setDateToFilter(event.target.value)}
+              aria-label="Filtro deri ne daten"
+            />
           </div>
         </div>
 
@@ -963,7 +1096,7 @@ export default function AdminDashboard() {
                     <td>{appointment.date}</td>
                     <td>{appointment.time}</td>
                     <td>{appointment.doctor}</td>
-                    <td>{appointment.user_id}</td>
+                    <td>{getPatientDisplayName(appointment)}</td>
                     <td>
                       <select
                         className={`status-select status-${getAppointmentStatus(appointment)}`}
