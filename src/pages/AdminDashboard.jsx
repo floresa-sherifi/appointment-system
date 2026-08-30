@@ -23,6 +23,14 @@ const WEEK_DAYS = [
   { value: "sun", label: "Diel" },
 ];
 
+const ADMIN_VIEWS = [
+  { id: "overview", label: "Dashboard" },
+  { id: "organization", label: "Organizimi" },
+  { id: "doctors", label: "Mjeket" },
+  { id: "schedules", label: "Orare" },
+  { id: "appointments", label: "Terminet" },
+];
+
 function getAppointmentStatus(appointment) {
   return appointment?.status || "pending";
 }
@@ -139,6 +147,7 @@ export default function AdminDashboard() {
   const [success, setSuccess] = useState("");
   const [limitedMode, setLimitedMode] = useState(false);
   const [scheduleWarning, setScheduleWarning] = useState("");
+  const [activeAdminView, setActiveAdminView] = useState("overview");
 
   const canAccessAdmin = isAdminUser(user);
 
@@ -667,79 +676,97 @@ export default function AdminDashboard() {
       {error && <div className="feedback-banner error-banner">{error}</div>}
       {success && <div className="feedback-banner success-banner">{success}</div>}
 
-      <section className="admin-stats">
-        <div className="mini-stat">
-          <span>Gjithsej</span>
-          <strong>{stats.total}</strong>
-        </div>
-        {STATUS_OPTIONS.map((status) => (
-          <div key={status} className="mini-stat">
-            <span>{STATUS_LABELS[status]}</span>
-            <strong>{stats[status]}</strong>
-          </div>
+      <nav className="admin-tabs">
+        {ADMIN_VIEWS.map((view) => (
+          <button
+            key={view.id}
+            type="button"
+            className={activeAdminView === view.id ? "admin-tab admin-tab--active" : "admin-tab"}
+            onClick={() => setActiveAdminView(view.id)}
+          >
+            {view.label}
+          </button>
         ))}
-        <div className="mini-stat">
-          <span>Mjeke</span>
-          <strong>{doctors.length}</strong>
-        </div>
-        <div className="mini-stat">
-          <span>Klinika</span>
-          <strong>{clinics.length}</strong>
-        </div>
-      </section>
+      </nav>
 
-      <section className="panel admin-table-panel">
-        <div className="panel-heading admin-table-heading">
-          <div>
-            <p className="section-eyebrow">Reports</p>
-            <h3>Raporte dhe statistika</h3>
-          </div>
-        </div>
+      {activeAdminView === "overview" && (
+        <>
+          <section className="admin-stats">
+            <div className="mini-stat">
+              <span>Gjithsej</span>
+              <strong>{stats.total}</strong>
+            </div>
+            {STATUS_OPTIONS.map((status) => (
+              <div key={status} className="mini-stat">
+                <span>{STATUS_LABELS[status]}</span>
+                <strong>{stats[status]}</strong>
+              </div>
+            ))}
+            <div className="mini-stat">
+              <span>Mjeke</span>
+              <strong>{doctors.length}</strong>
+            </div>
+            <div className="mini-stat">
+              <span>Klinika</span>
+              <strong>{clinics.length}</strong>
+            </div>
+          </section>
 
-        <div className="reports-grid">
-          <div className="report-card">
-            <span>Sot</span>
-            <strong>{reportStats.today}</strong>
-            <p>Termine ditore</p>
-          </div>
-          <div className="report-card">
-            <span>Kete jave</span>
-            <strong>{reportStats.week}</strong>
-            <p>Termine javore</p>
-          </div>
-          <div className="report-card">
-            <span>Kete muaj</span>
-            <strong>{reportStats.month}</strong>
-            <p>Termine mujore</p>
-          </div>
-          <div className="report-card">
-            <span>Te anuluara</span>
-            <strong>{reportStats.cancelled}</strong>
-            <p>Termine cancelled</p>
-          </div>
-          <div className="report-card report-card--wide">
-            <span>Mjeku me me shume termine</span>
-            <strong>{reportStats.topDoctorName}</strong>
-            <p>{reportStats.topDoctorCount} termine gjithsej</p>
-          </div>
-          <div className="report-card">
-            <span>Rezultate filtri</span>
-            <strong>{reportStats.filtered}</strong>
-            <p>Termine te shfaqura</p>
-          </div>
-        </div>
-      </section>
+          <section className="panel admin-table-panel">
+            <div className="panel-heading admin-table-heading">
+              <div>
+                <p className="section-eyebrow">Reports</p>
+                <h3>Raporte dhe statistika</h3>
+              </div>
+            </div>
 
-      <section className="panel admin-table-panel">
-        <div className="panel-heading admin-table-heading">
-          <div>
-            <p className="section-eyebrow">Organization</p>
-            <h3>Klinika, departamente dhe specialitete</h3>
-          </div>
-        </div>
+            <div className="reports-grid">
+              <div className="report-card">
+                <span>Sot</span>
+                <strong>{reportStats.today}</strong>
+                <p>Termine ditore</p>
+              </div>
+              <div className="report-card">
+                <span>Kete jave</span>
+                <strong>{reportStats.week}</strong>
+                <p>Termine javore</p>
+              </div>
+              <div className="report-card">
+                <span>Kete muaj</span>
+                <strong>{reportStats.month}</strong>
+                <p>Termine mujore</p>
+              </div>
+              <div className="report-card">
+                <span>Te anuluara</span>
+                <strong>{reportStats.cancelled}</strong>
+                <p>Termine cancelled</p>
+              </div>
+              <div className="report-card report-card--wide">
+                <span>Mjeku me me shume termine</span>
+                <strong>{reportStats.topDoctorName}</strong>
+                <p>{reportStats.topDoctorCount} termine gjithsej</p>
+              </div>
+              <div className="report-card">
+                <span>Rezultate filtri</span>
+                <strong>{reportStats.filtered}</strong>
+                <p>Termine te shfaqura</p>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
-        <div className="organization-grid">
-          <form
+      {activeAdminView === "organization" && (
+        <section className="panel admin-table-panel">
+          <div className="panel-heading admin-table-heading">
+            <div>
+              <p className="section-eyebrow">Organization</p>
+              <h3>Klinika, departamente dhe specialitete</h3>
+            </div>
+          </div>
+
+          <div className="organization-grid">
+            <form
             className="organization-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -767,9 +794,9 @@ export default function AdminDashboard() {
               ))}
               {sortedClinics.length === 0 && <p className="empty-state">Nuk ka klinika ende.</p>}
             </div>
-          </form>
+            </form>
 
-          <form
+            <form
             className="organization-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -793,9 +820,9 @@ export default function AdminDashboard() {
               ))}
               {sortedDepartments.length === 0 && <p className="empty-state">Nuk ka departamente ende.</p>}
             </div>
-          </form>
+            </form>
 
-          <form
+            <form
             className="organization-form"
             onSubmit={(event) => {
               event.preventDefault();
@@ -819,11 +846,13 @@ export default function AdminDashboard() {
               ))}
               {sortedSpecialties.length === 0 && <p className="empty-state">Nuk ka specialitete ende.</p>}
             </div>
-          </form>
-        </div>
-      </section>
+            </form>
+          </div>
+        </section>
+      )}
 
-      <section className="panel admin-table-panel">
+      {activeAdminView === "doctors" && (
+        <section className="panel admin-table-panel">
         <div className="panel-heading admin-table-heading">
           <div>
             <p className="section-eyebrow">Doctors</p>
@@ -912,9 +941,11 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      )}
 
-      <section className="panel admin-table-panel">
+      {activeAdminView === "schedules" && (
+        <section className="panel admin-table-panel">
         <div className="panel-heading admin-table-heading">
           <div>
             <p className="section-eyebrow">Schedules</p>
@@ -1021,9 +1052,11 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      )}
 
-      <section className="panel admin-table-panel">
+      {activeAdminView === "appointments" && (
+        <section className="panel admin-table-panel">
         <div className="panel-heading admin-table-heading">
           <div>
             <p className="section-eyebrow">Appointments</p>
@@ -1116,7 +1149,8 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
-      </section>
+        </section>
+      )}
     </main>
   );
 }

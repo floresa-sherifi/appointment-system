@@ -998,6 +998,30 @@ button:disabled {
   align-items: center;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.admin-tab {
+  width: auto;
+  min-height: 46px;
+  margin-top: 0;
+  padding: 11px 16px;
+  border-radius: 16px;
+  background: #eef4ff;
+  color: #27437a;
+  box-shadow: none;
+}
+
+.admin-tab--active {
+  background: linear-gradient(135deg, #235bff, #6f66ff);
+  color: white;
+  box-shadow: 0 14px 24px rgba(74, 60, 255, 0.18);
+}
+
 .text-link-button {
   display: inline-flex;
   align-items: center;
@@ -1344,6 +1368,10 @@ button:disabled {
   .booking-doctor-grid,
   .booking-summary {
     grid-template-columns: 1fr;
+  }
+
+  .admin-tab {
+    flex: 1 1 calc(50% - 10px);
   }
 
   .report-card--wide {
