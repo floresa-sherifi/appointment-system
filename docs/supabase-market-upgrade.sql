@@ -22,7 +22,11 @@ returns boolean
 language sql
 stable
 as $$
-  select coalesce((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin', false);
+  select
+    coalesce((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin', false)
+    or lower(coalesce(auth.jwt() ->> 'email', '')) in (
+      'floresasherifi97@gmail.com'
+    );
 $$;
 
 create or replace function public.is_doctor_for_appointment(appointment_doctor text)
