@@ -65,6 +65,28 @@ textarea {
   color: #60708f;
 }
 
+.role-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.role-choice__button {
+  margin-top: 0;
+  border: 1px solid #dbe4f3;
+  background: #eef4ff;
+  color: #294a86;
+  box-shadow: none;
+}
+
+.role-choice__button--active {
+  border-color: rgba(44, 108, 255, 0.5);
+  background: linear-gradient(135deg, #235bff, #6f66ff);
+  color: #ffffff;
+  box-shadow: 0 14px 24px rgba(74, 60, 255, 0.18);
+}
+
 input,
 select,
 textarea,
