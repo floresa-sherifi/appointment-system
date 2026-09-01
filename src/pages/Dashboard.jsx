@@ -457,6 +457,7 @@ export default function Dashboard() {
   const [highlightedAppointmentId, setHighlightedAppointmentId] = useState(null);
   const [doctorSearch, setDoctorSearch] = useState("");
   const [doctorClinicFilter, setDoctorClinicFilter] = useState(ALL_SPECIALTIES_FILTER);
+  const [bookingClinic, setBookingClinic] = useState(ALL_SPECIALTIES_FILTER);
   const [bookingSpecialty, setBookingSpecialty] = useState(ALL_SPECIALTIES_FILTER);
   const appointmentEditorRef = useRef(null);
   const appointmentsSectionRef = useRef(null);
@@ -520,18 +521,30 @@ export default function Dashboard() {
       },
     ];
   }, [doctor, doctorCards]);
-  const bookingSpecialties = useMemo(
+  const bookingClinicOptions = useMemo(
     () => [
       ALL_SPECIALTIES_FILTER,
-      ...Array.from(new Set(doctorOptions.map((doctorOption) => doctorOption.specialty).filter(Boolean))),
+      ...Array.from(new Set(doctorOptions.map((doctorOption) => doctorOption.hospital).filter(Boolean))),
     ],
     [doctorOptions]
   );
-  const bookingDoctorCards = useMemo(() => {
-    if (bookingSpecialty === ALL_SPECIALTIES_FILTER) return doctorOptions;
+  const clinicFilteredDoctorOptions = useMemo(() => {
+    if (bookingClinic === ALL_SPECIALTIES_FILTER) return doctorOptions;
 
-    return doctorOptions.filter((doctorOption) => doctorOption.specialty === bookingSpecialty);
-  }, [bookingSpecialty, doctorOptions]);
+    return doctorOptions.filter((doctorOption) => doctorOption.hospital === bookingClinic);
+  }, [bookingClinic, doctorOptions]);
+  const bookingSpecialties = useMemo(
+    () => [
+      ALL_SPECIALTIES_FILTER,
+      ...Array.from(new Set(clinicFilteredDoctorOptions.map((doctorOption) => doctorOption.specialty).filter(Boolean))),
+    ],
+    [clinicFilteredDoctorOptions]
+  );
+  const bookingDoctorCards = useMemo(() => {
+    if (bookingSpecialty === ALL_SPECIALTIES_FILTER) return clinicFilteredDoctorOptions;
+
+    return clinicFilteredDoctorOptions.filter((doctorOption) => doctorOption.specialty === bookingSpecialty);
+  }, [bookingSpecialty, clinicFilteredDoctorOptions]);
   const selectedDoctorProfile = useMemo(
     () => doctorOptions.find((doctorOption) => doctorOption.name === doctor) || null,
     [doctor, doctorOptions]
@@ -711,6 +724,8 @@ export default function Dashboard() {
     setDate("");
     setTime("");
     setDoctor("");
+    setBookingClinic(ALL_SPECIALTIES_FILTER);
+    setBookingSpecialty(ALL_SPECIALTIES_FILTER);
     setEditingAppointmentId(null);
     setAvailableTimes(ALL_TIMES);
   };
@@ -727,7 +742,15 @@ export default function Dashboard() {
 
   const handleDoctorChange = (e) => {
     const nextDoctor = e.target.value;
+    const selectedDoctor = doctorOptions.find((doctorOption) => doctorOption.name === nextDoctor);
+
     setDoctor(nextDoctor);
+    if (selectedDoctor?.hospital) {
+      setBookingClinic(selectedDoctor.hospital);
+    }
+    if (selectedDoctor?.specialty) {
+      setBookingSpecialty(selectedDoctor.specialty);
+    }
     setTime("");
 
     if (!nextDoctor || !date) {
@@ -736,10 +759,47 @@ export default function Dashboard() {
   };
 
   const chooseDoctorForBooking = (nextDoctor) => {
+    const selectedDoctor = doctorOptions.find((doctorOption) => doctorOption.name === nextDoctor);
+
     setDoctor(nextDoctor);
+    if (selectedDoctor?.hospital) {
+      setBookingClinic(selectedDoctor.hospital);
+    }
+    if (selectedDoctor?.specialty) {
+      setBookingSpecialty(selectedDoctor.specialty);
+    }
     setTime("");
 
     if (!nextDoctor || !date) {
+      setAvailableTimes(ALL_TIMES);
+    }
+  };
+
+  const handleBookingClinicChange = (nextClinic) => {
+    setBookingClinic(nextClinic);
+    setBookingSpecialty(ALL_SPECIALTIES_FILTER);
+    setTime("");
+
+    const selectedDoctor = doctorOptions.find((doctorOption) => doctorOption.name === doctor);
+    const doctorMatchesClinic =
+      nextClinic === ALL_SPECIALTIES_FILTER || selectedDoctor?.hospital === nextClinic;
+
+    if (!doctorMatchesClinic) {
+      setDoctor("");
+      setAvailableTimes(ALL_TIMES);
+    }
+  };
+
+  const handleBookingSpecialtyChange = (nextSpecialty) => {
+    setBookingSpecialty(nextSpecialty);
+    setTime("");
+
+    const selectedDoctor = doctorOptions.find((doctorOption) => doctorOption.name === doctor);
+    const doctorMatchesSpecialty =
+      nextSpecialty === ALL_SPECIALTIES_FILTER || selectedDoctor?.specialty === nextSpecialty;
+
+    if (!doctorMatchesSpecialty) {
+      setDoctor("");
       setAvailableTimes(ALL_TIMES);
     }
   };
@@ -837,10 +897,14 @@ export default function Dashboard() {
   };
 
   const startEditingAppointment = (appointment) => {
+    const selectedDoctor = doctorOptions.find((doctorOption) => doctorOption.name === appointment.doctor);
+
     setEditingAppointmentId(appointment.id);
     setDate(appointment.date);
     setTime(appointment.time);
     setDoctor(appointment.doctor);
+    setBookingClinic(selectedDoctor?.hospital || ALL_SPECIALTIES_FILTER);
+    setBookingSpecialty(selectedDoctor?.specialty || ALL_SPECIALTIES_FILTER);
     setActiveView("overview");
     setHighlightedAppointmentId(appointment.id);
     setSuccess("");
@@ -1102,8 +1166,19 @@ export default function Dashboard() {
                 <div className="booking-step">
                   <div className="booking-step__heading">
                     <span>Mjeku</span>
-                    <small>{doctor ? "Mjeku eshte zgjedhur" : "Zgjidh sipas specialitetit"}</small>
+                    <small>{doctor ? "Mjeku eshte zgjedhur" : "Zgjidh kliniken dhe specialitetin"}</small>
                   </div>
+
+                  <label className="compact-select">
+                    <span>Klinika</span>
+                    <select value={bookingClinic} onChange={(event) => handleBookingClinicChange(event.target.value)}>
+                      {bookingClinicOptions.map((clinic) => (
+                        <option key={clinic} value={clinic}>
+                          {clinic === ALL_SPECIALTIES_FILTER ? "Te gjitha klinikat" : clinic}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
                   <div className="specialty-filter">
                     {bookingSpecialties.map((specialty) => (
@@ -1115,7 +1190,7 @@ export default function Dashboard() {
                             ? "specialty-pill specialty-pill--active"
                             : "specialty-pill"
                         }
-                        onClick={() => setBookingSpecialty(specialty)}
+                        onClick={() => handleBookingSpecialtyChange(specialty)}
                       >
                         {specialty}
                       </button>
@@ -1147,16 +1222,20 @@ export default function Dashboard() {
                           <span>{doctorOption.fee || "Cmimi sipas klinikes"}</span>
                         </span>
                       </button>
-                    ))}
+                      ))}
                   </div>
+
+                  {bookingDoctorCards.length === 0 && (
+                    <p className="empty-state">Nuk ka mjeke per kliniken ose specialitetin e zgjedhur.</p>
+                  )}
 
                   <label className="compact-select">
                     <span>Ose zgjidh nga lista</span>
                     <select value={doctor} onChange={handleDoctorChange}>
                       <option value="">Zgjidh mjekun</option>
-                      {doctorOptions.map((doctorOption) => (
+                      {bookingDoctorCards.map((doctorOption) => (
                         <option key={doctorOption.name} value={doctorOption.name}>
-                          {doctorOption.name} - {doctorOption.specialty}
+                          {doctorOption.name} - {doctorOption.specialty} / {doctorOption.hospital}
                         </option>
                       ))}
                     </select>
@@ -1199,6 +1278,10 @@ export default function Dashboard() {
                 </div>
 
                 <div className="booking-summary">
+                  <div>
+                    <span>Klinika</span>
+                    <strong>{selectedDoctorProfile?.hospital || bookingClinic || "Pa zgjedhur"}</strong>
+                  </div>
                   <div>
                     <span>Mjeku</span>
                     <strong>{doctor || "Pa zgjedhur"}</strong>
