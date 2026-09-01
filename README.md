@@ -1,102 +1,168 @@
 # Appointment System
 
-Appointment System eshte nje aplikacion web per rezervimin dhe menaxhimin e termineve mjekesore. Projekti eshte ndertuar me React, Vite dhe Supabase per autentikim dhe ruajtje te te dhenave.
+Appointment System eshte aplikacion web per rezervimin dhe menaxhimin e termineve mjekesore. Sistemi eshte ndertuar me React, Vite dhe Supabase, dhe mbeshtet tre role kryesore: pacient, mjek dhe administrator.
 
-## Cfare ofron projekti
+## Qellimi i projektit
 
-- Regjistrim dhe login me Supabase Auth
-- Dashboard i mbrojtur per perdorues te autentikuar
-- Rezervim i termineve sipas dates, mjekut dhe ores
-- Bllokim i oreve te zena per te shmangur rezervimet e dyfishta
-- Editim dhe fshirje e termineve ekzistuese
-- Liste e mjekeve me kerkim sipas emrit, specialitetit dhe qytetit
-- Profil pacienti me emer, telefon, datelindje dhe shenime mjekesore bazike
-- Email notifications per rezervim, ndryshim dhe anulim termini
-- Supabase Edge Function per email dhe kujtesa 24h
-- Admin dashboard per kontroll te termineve
-- AI assistant me Groq per pyetje rreth termineve, mjekeve dhe orareve, me fallback lokal
-- Gjendje `loading`, `error`, `success` dhe njoftim kur perdoruesi eshte offline
+Qellimi i projektit eshte te ofroje nje sistem praktik ku pacientet mund te rezervojne termine online, mjeket mund te menaxhojne terminet e tyre, ndersa administratori mund te kontrolloje organizimin e klinikes, oraret dhe statistikat.
 
-## Teknologjite
+## Funksionalitetet kryesore
 
-- React 19
+- Regjistrim dhe kyqje me Supabase Auth
+- Zgjedhje roli gjate regjistrimit: pacient ose mjek
+- Administrator i kontrolluar permes email-it ose metadata ne Supabase
+- Dashboard i ndare sipas rolit te perdoruesit
+- Rezervim, editim dhe anulim i termineve nga pacienti
+- Zgjedhje e klinikes para zgjedhjes se mjekut
+- Filtrim i mjekeve sipas klinikes dhe specialitetit
+- Historik i termineve te pacientit
+- Panel i vecante per mjekun
+- Mjeku mund te shikoje terminet e veta
+- Mjeku mund te ndryshoje statusin e terminit
+- Mjeku mund te shtoje shenime pas vizites
+- Panel administrativ me tabs te organizuar
+- Menaxhim i mjekeve nga administratori
+- Menaxhim i klinikave, departamenteve dhe specialiteteve
+- Orar dinamik per secilin mjek
+- Bllokim i oreve per pauza ose takime tjera
+- Oret e bllokuara nuk shfaqen te pacienti gjate rezervimit
+- Raporte dhe statistika per administratorin
+- RLS policies ne Supabase per qasje sipas rolit
+- Logout per panelin e mjekut dhe administratorit
+- Foto te mjekeve ne panelin e pacientit
+
+## Rolet ne sistem
+
+### Pacient
+
+Pacienti mund te:
+
+- regjistrohet dhe kyqet ne sistem
+- zgjedhe kliniken, mjekun, daten dhe oren
+- rezervoje termin
+- editoje terminin e vet
+- anuloje terminin e vet
+- shikoje terminet aktive dhe historikun
+- perditesoje profilin personal
+
+### Mjek
+
+Mjeku mund te:
+
+- kyqet ne panelin e mjekut
+- shikoje vetem terminet qe lidhen me emrin e tij
+- filtroje terminet sipas statusit
+- konfirmoje, anuloje ose shenoje si te perfunduar nje termin
+- shtoje shenime pas vizites
+
+### Administrator
+
+Administratori mund te:
+
+- shikoje dashboard-in administrativ
+- menaxhoje terminet e klinikes
+- ndryshoje statuset e termineve
+- shtoje, editoje dhe fshije mjeke
+- menaxhoje klinikat, departamentet dhe specialitetet
+- caktoje oraret e punes per mjeket
+- bllokoje ore per pauza ose takime tjera
+- shikoje raporte dhe statistika
+
+## Teknologjite e perdorura
+
+- React
 - Vite
 - React Router
-- Supabase
+- Supabase Auth
+- Supabase Database
+- Supabase Row Level Security
 - CSS
 
-## Struktura e shkurter
+## Struktura e projektit
 
-- `src/pages/Login.jsx` dhe `src/pages/Signup.jsx`: autentikimi
-- `src/pages/Dashboard.jsx`: dashboard, rezervimet, doktoret, profili dhe AI assistant
-- `src/pages/AdminDashboard.jsx`: paneli i adminit
-- `src/components/ProtectedRoute.jsx`: mbrojtja e routes private
+- `src/pages/Login.jsx`: faqja e kyqjes
+- `src/pages/Signup.jsx`: faqja e regjistrimit me zgjedhje roli
+- `src/pages/Dashboard.jsx`: paneli i pacientit
+- `src/pages/DoctorDashboard.jsx`: paneli i mjekut
+- `src/pages/AdminDashboard.jsx`: paneli i administratorit
+- `src/utils/roles.js`: logjika per identifikimin e roleve
 - `src/context/AuthContext.jsx`: menaxhimi i sesionit
-- `src/supabaseClient.js`: konfigurimi i klientit Supabase
-- `supabase/functions/groq-assistant/index.ts`: Edge Function per AI assistant me Groq
-- `supabase/functions/send-appointment-email/index.ts`: Edge Function per email notifications
-- `docs/demo-plan.md`: plani i prezantimit final
-- `docs/email-notifications.md`: setup per email notifications
-- `docs/email-notifications.sql`: SQL per log-et e email reminders
-- `docs/clinic-organization.sql`: SQL per klinika, departamente, specialitete dhe fushat shtese te mjekeve
+- `src/supabaseClient.js`: lidhja me Supabase
+- `docs/supabase-market-upgrade.sql`: tabela/kolona/policies per terminet
+- `docs/clinic-organization.sql`: klinika, departamente, specialitete dhe mjeke
+- `docs/doctor-schedules.sql`: oraret e mjekeve dhe bllokimet e oreve
+- `docs/email-notifications.sql`: log-et per email reminders
+- `docs/email-notifications.md`: udhezime per email notifications
+- `docs/demo-plan.md`: plan per prezantim
 
-## Live URL
+## Supabase
 
-https://appointment-system-mu.vercel.app/
+Per funksionim te plote duhet te ekzekutohen keto SQL scripts ne Supabase SQL Editor:
+
+1. `docs/supabase-market-upgrade.sql`
+2. `docs/clinic-organization.sql`
+3. `docs/doctor-schedules.sql`
+4. `docs/email-notifications.sql`, nese perdoren email reminders
+
+Keto scripts krijojne ose perditesojne tabelat, kolonat dhe RLS policies per qasje te kontrolluar.
 
 ## Konfigurimi lokal
 
-Krijo nje file `.env` me keto variabla:
+Krijo nje file `.env` ne root te projektit:
 
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_DOCTOR_EMAILS=doctor@example.com
+VITE_ADMIN_EMAILS=admin@example.com
 ```
 
-Pastaj ekzekuto:
+Pastaj instalo dependencies:
 
 ```bash
 npm install
+```
+
+Nise projektin:
+
+```bash
 npm run dev
 ```
 
-## Build dhe kontroll
+## Build dhe lint
 
-Per kontroll lokal:
+Per kontroll te kodit:
 
 ```bash
-npm run build
 npm run lint
 ```
 
-## Email notifications
-
-Email notifications perdorin Supabase Edge Functions dhe Resend.
-
-Setup-i i plote eshte te:
-
-- [docs/email-notifications.md](docs/email-notifications.md)
-- [docs/email-notifications.sql](docs/email-notifications.sql)
-
-## Groq AI assistant
-
-AI assistant perdor Supabase Edge Function qe API key te qendroje ne server.
-
-Secrets qe duhen vendosur ne Supabase:
+Per build final:
 
 ```bash
-supabase secrets set GROQ_API_KEY=your_groq_api_key
-supabase secrets set GROQ_MODEL=llama-3.3-70b-versatile
+npm run build
 ```
 
-Deploy:
+## Testimi final
 
-```bash
-supabase functions deploy groq-assistant
-```
+Para dorezimit, sistemi duhet testuar me tre llogari:
 
-`GROQ_MODEL` eshte opsional; nese mungon, perdoret `llama-3.3-70b-versatile`.
+- nje pacient
+- nje mjek
+- nje administrator
 
-## Demo prep
+Kontrollet kryesore:
 
-Per planin e plote te prezantimit shiko [docs/demo-plan.md](docs/demo-plan.md).
+- pacienti rezervon, editon dhe anulon termin
+- pacienti zgjedh kliniken dhe mjekun
+- mjeku e sheh terminin e vet
+- mjeku ndryshon statusin dhe shton shenime
+- administratori menaxhon mjeket dhe klinikat
+- administratori cakton orare
+- administratori bllokon ore
+- ora e bllokuar nuk shfaqet te pacienti
+- raportet dhe statistikat shfaqen ne admin dashboard
+
+## Statusi i projektit
+
+Projekti eshte funksional dhe i gatshem per prezantim ose dorezim. Funksionalitetet kryesore nga propozimet jane implementuar, perfshire ndarjen e roleve, panelin e mjekut, menaxhimin administrativ, oraret dinamike, historikun e termineve, raportet dhe sigurine me RLS.
